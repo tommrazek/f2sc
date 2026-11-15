@@ -20,9 +20,9 @@ Then on the workstation (Linux x86_64/aarch64 with glibc 2.35+, or macOS):
    4 GB of free memory for the build.
 2. Clone this repo and, **beside it** (same parent folder), cadmpeg with its branches:
 
-       git clone URL cadmpeg2sc
+       git clone URL f2sc
        git clone https://github.com/cadmpeg/cadmpeg cadmpeg
-       git -C cadmpeg fetch ../cadmpeg2sc/cadmpeg-f3d2sc.bundle 'refs/heads/*:refs/heads/*'
+       git -C cadmpeg fetch ../f2sc/cadmpeg-f3d2sc.bundle 'refs/heads/*:refs/heads/*'
        git -C cadmpeg checkout f3d2sc
 
    A machine with the older layout (`cadmpeg/` inside this repo): move that folder out of the
@@ -33,7 +33,7 @@ Then on the workstation (Linux x86_64/aarch64 with glibc 2.35+, or macOS):
 3. Build the decoder (10 to 15 minutes; one job, or it runs out of memory on small machines)
    and put it where the converter looks for it:
 
-       cd cadmpeg2sc
+       cd f2sc
        (cd decoder && CARGO_BUILD_JOBS=1 cargo build --release)
        mkdir -p bin && cp decoder/target/release/f3d2sc-decode bin/
 

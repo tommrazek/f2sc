@@ -1,6 +1,6 @@
-# cadmpeg2sc: Fusion `.f3d` / `.f3z` to SolidCraft
+# f2sc: Fusion `.f3d` / `.f3z` to SolidCraft
 
-cadmpeg2sc converts an Autodesk Fusion design file into a [SolidCraft](https://github.com/tangency-labs/solidcraft)
+f2sc converts an Autodesk Fusion design file into a [SolidCraft](https://github.com/tangency-labs/solidcraft)
 command script that rebuilds the design **feature by feature**: sketches, extrudes, revolves,
 holes, threads, fillets, chamfers, patterns, mirrors, combines. The result opens in SolidCraft
 with an editable timeline, not as a dead imported shape. A Fusion assembly archive (`.f3z`)
@@ -62,14 +62,14 @@ decoder finds cadmpeg at `../cadmpeg`, relative to this repository:
 
 ```
 some-folder/
-├── cadmpeg2sc/      ← this repository
+├── f2sc/            ← this repository
 │   ├── decoder/     (builds against ../../cadmpeg/crates/*)
 │   ├── bin/         (the built decoder goes here)
 │   └── f3d2sc.py
-└── cadmpeg/         ← the cadmpeg clone, NOT inside cadmpeg2sc
+└── cadmpeg/         ← the cadmpeg clone, NOT inside f2sc
 ```
 
-Do not clone cadmpeg inside `cadmpeg2sc`. If you did, see [Troubleshooting](#6-troubleshooting).
+Do not clone cadmpeg inside `f2sc`. If you did, see [Troubleshooting](#6-troubleshooting).
 
 ### 1.3 Step by step
 
@@ -78,13 +78,13 @@ Run these from an empty folder, e.g. `~/projects`. Each block is one step.
 **Step 1. Clone this repository.**
 
 ```bash
-git clone https://github.com/tommrazek/cadmpeg2sc
+git clone https://github.com/tommrazek/f2sc
 ```
 
 (If you got this repository another way, e.g. as a copy under another name, use that folder
-instead of `cadmpeg2sc` in the commands below.)
+instead of `f2sc` in the commands below.)
 
-**Step 2. Clone cadmpeg next to it**, from the same parent folder (not from inside `cadmpeg2sc`):
+**Step 2. Clone cadmpeg next to it**, from the same parent folder (not from inside `f2sc`):
 
 ```bash
 git clone https://github.com/cadmpeg/cadmpeg
@@ -93,12 +93,12 @@ git clone https://github.com/cadmpeg/cadmpeg
 This downloads about 220 MB.
 
 **Step 3. Add the fixes this converter needs.** Upstream cadmpeg has not merged all of them yet.
-They come in `cadmpeg2sc/cadmpeg-f3d2sc.bundle`, a git bundle (a file holding git branches). Fetch
+They come in `f2sc/cadmpeg-f3d2sc.bundle`, a git bundle (a file holding git branches). Fetch
 all its branches into the clone and check out `f3d2sc-next`, which is upstream cadmpeg plus every
 fix:
 
 ```bash
-git -C cadmpeg fetch ../cadmpeg2sc/cadmpeg-f3d2sc.bundle 'refs/heads/*:refs/heads/*'
+git -C cadmpeg fetch ../f2sc/cadmpeg-f3d2sc.bundle 'refs/heads/*:refs/heads/*'
 ```
 ```bash
 git -C cadmpeg checkout f3d2sc-next
@@ -115,7 +115,7 @@ folder.
 **Step 4. Build the decoder.** Go into the repository, build, and copy the binary to `bin/`:
 
 ```bash
-cd cadmpeg2sc
+cd f2sc
 ```
 ```bash
 (cd decoder && cargo build --release) && mkdir -p bin && cp decoder/target/release/f3d2sc-decode bin/
@@ -164,7 +164,7 @@ Set-up is complete.
 
 ## 2. Your first conversion
 
-Run everything from inside `cadmpeg2sc`. The repository ships sample designs in `benchmarks/`.
+Run everything from inside `f2sc`. The repository ships sample designs in `benchmarks/`.
 
 ### 2.1 A single part, checked
 
@@ -325,13 +325,13 @@ and the root assembly empty), so rebuild whenever you change what `../cadmpeg` h
 
 **When this repository's bundle changes** (after `git pull`), refresh the branches and rebuild.
 git refuses to fetch into a branch that is checked out, so step off it first, fetch, and check
-`f3d2sc-next` out again (run from inside `cadmpeg2sc`):
+`f3d2sc-next` out again (run from inside `f2sc`):
 
 ```bash
 git -C ../cadmpeg checkout --detach
 ```
 ```bash
-git -C ../cadmpeg fetch ../cadmpeg2sc/cadmpeg-f3d2sc.bundle '+refs/heads/*:refs/heads/*'
+git -C ../cadmpeg fetch ../f2sc/cadmpeg-f3d2sc.bundle '+refs/heads/*:refs/heads/*'
 ```
 ```bash
 git -C ../cadmpeg checkout f3d2sc-next
@@ -351,7 +351,7 @@ then rebuild. To pick up new upstream work before that, rebase the fixes onto it
 **Recreating the bundle** after a change in `../cadmpeg` (maintainers only):
 
 ```bash
-git -C ../cadmpeg bundle create ../cadmpeg2sc/cadmpeg-f3d2sc.bundle f3d2sc-next $(git -C ../cadmpeg for-each-ref --format='%(refname:short)' 'refs/heads/f3d/*') ^origin/main
+git -C ../cadmpeg bundle create ../f2sc/cadmpeg-f3d2sc.bundle f3d2sc-next $(git -C ../cadmpeg for-each-ref --format='%(refname:short)' 'refs/heads/f3d/*') ^origin/main
 ```
 
 ---
@@ -393,7 +393,7 @@ It must end with `0 regression(s)` (a feature that resolved before and does not 
 | Symptom | Cause and fix |
 |---|---|
 | `fatal: refusing to fetch into branch 'refs/heads/...' checked out` | Detach first, then fetch (section 4). |
-| `fatal: '../cadmpeg2sc/cadmpeg-f3d2sc.bundle' does not appear to be a git repository` | You ran the command from the wrong folder, or cadmpeg is cloned inside `cadmpeg2sc`. If `cadmpeg2sc/cadmpeg` exists, move it out: from inside `cadmpeg2sc` run `mv cadmpeg ../cadmpeg`, then `cd ..` and repeat step 3. |
+| `fatal: '../f2sc/cadmpeg-f3d2sc.bundle' does not appear to be a git repository` | You ran the command from the wrong folder, or cadmpeg is cloned inside `f2sc`. If `f2sc/cadmpeg` exists, move it out: from inside `f2sc` run `mv cadmpeg ../cadmpeg`, then `cd ..` and repeat step 3. |
 | `error: failed to load manifest for dependency 'cadmpeg-codec-f3d'` ... `failed to read .../cadmpeg/crates/cadmpeg-codec-f3d/Cargo.toml` during the build | The decoder found no `../cadmpeg`: wrong layout (see 1.2). Fix the layout, then rebuild. |
 | `bin/f3d2sc-decode --version` prints `cadmpeg unknown` | `../cadmpeg` is not a git clone (e.g. a downloaded zip), so the build cannot record its commit. Clone it with git (step 2). |
 | `--version` prints a different hash | `../cadmpeg` is on another branch. `git -C ../cadmpeg branch --show-current` should say `f3d2sc-next`; check it out and rebuild. |
