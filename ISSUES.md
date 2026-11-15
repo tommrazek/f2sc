@@ -1,0 +1,50 @@
+# Issues: film scanner and chaser_fluidic (15 Nov)
+
+> **16 Nov:** at the user's request the chaser_fluidic design and the reproductions built from it were removed from this repository's current files. The evidence below that refers to it stays as a record.
+
+The issues found with these commands, as run on the Mac:
+
+    python3 f3d2sc.py benchmarks/film_scanner.f3d -o film_scanner_h2 --build <solidcraft-cli>
+    python3 f3d2sc.py benchmarks/chaser_fluidic.f3z -o chaser_fluidic_h2 --build <solidcraft-cli>
+
+Each issue says where it lies (**converter**, **cadmpeg**, **SolidCraft**, or **set-up**) and
+how it was handled. Each fix has its own commit on `main`. The cadmpeg-side items are written
+up for a focused session in `CONTRIBUTIONS.md` (Open items).
+
+## Film scanner
+
+| # | Issue | Where | Status |
+|---|---|---|---|
+| F1 | The Mac's decoder was built before the 14 Nov rebase. Mirror 4's plane is not decoded, so Mirror 4, Combine 4 and Combine 5 are left out: frame bodies 1 and 4 stay uncut, and tool bodies 5 and 6 stay visible. It also decodes no occurrence placements: "0 commands placing 2 components", and the root `.sc` has 0 bodies. Reproduced exactly here with the pre-rebase decoder. | set-up | On the Mac: update `cadmpeg/`, rebuild the decoder (README, Set-up). The converter now warns about a stale decoder (`aa05ce9`). |
+| F2 | A stale decoder gave no sign. | converter | Fixed `aa05ce9`: the decoder build records cadmpeg's commit (`f3d2sc-decode --version`); the converter warns when that is missing or differs from `cadmpeg/`'s HEAD. |
+| F3 | Combine 4: SolidCraft deletes frame body 1 when it cuts it with the threaded shaft (SolidCraft issue 3). With the current decoder, frame 1 stayed uncut under `--check` and disappeared under `--build`. | SolidCraft (workaround in converter) | Worked around `6d9bcf3`: the cut uses the tool's two halves, split through the thread's axis. Body 1 is now 77,868 mm³ (Fusion lies between 77,137 and 78,755); body 4's 64,813 mm³ is unchanged. Still to report upstream (posts under your account). |
+| F4 | Kept tool bodies 5 and 6 visible on the Mac. | set-up (F1) | Hidden with the current decoder (Body 2, 3, 5, 6, as in Fusion). |
+| F5 | Component 2's Extrude 3: its sketch is not emitted, so its body is imported. | converter | Open (from 14 Nov). |
+
+## chaser_fluidic
+
+| # | Issue | Where | Status |
+|---|---|---|---|
+| C1 | `benchmarks/chaser_fluidic.f3d` does not exist; the file is `.f3z`. | — | Use the `.f3z` (as in the second Mac command). |
+| C2 | `--build` without `--check` did not handle a feature SolidCraft refuses: Stack_Main and Piston failed to build. | converter | Fixed `d46c7bc`: each script is run once, and a refused feature goes through the `--check` fallbacks. |
+| C3 | One failed part `.sc` stopped the root build ("not found"). | converter | Fixed `026fa7b`: the root builds without that part, with a warning. |
+| C4 | Piston Revolve 1 revolved both sketch regions; Fusion revolves one. The extra 0.1 mm groove region filled the groove, so Chamfer 2's edges did not exist ("the edge … is smooth"). | cadmpeg (DR-340); converter fallback | cadmpeg reads the record since upstream #1308; it is a selection stored before the sketch was edited (a groove was added later), which cadmpeg keeps native. Converter: the inference `revolve_region_from_initial_loop` reads the stored selected region (adapted 15 Nov to the nested record). What is still open and the save that settles it: `CONTRIBUTIONS.md`. |
+| C5 | Piston Chamfer 1 measured its distance along the wrong face: 0.24 mm³ off Fusion (1.3e-4). | cadmpeg (DR-341); converter fallback | **Settled in cadmpeg** (15 Nov, branch `f3d/chamfer-set-flip`, PR 9 draft): byte 22 of the chamfer set is the flip state, and `flip_direction` is decoded. The converter passes it on; `chamfer_side_by_final_shape` stays as the check for SolidCraft's default side. |
+| C6 | Stack_Main Thread 2: SolidCraft refuses `solid.offset_face` on the two r = 0.5 mm bores, with any distance and also with validation off ("Face Loop has bad orientation"). Thread 2 and the five features after it were imported. | SolidCraft (workaround in converter) | Worked around `75f55bb`: the bore is widened by a coaxial cylinder cut. Thread 2 and C-Pattern 2 now convert; final shape matches. Reproduction: `solidcraft-issues/05-chaser-offset-bore-face-refused.json`. |
+| C7 | A cylinder cut whose cap only touches the end of the face it widens deletes the whole target body, with no error. | SolidCraft (workaround in converter) | The cut runs 1 µm past each end (`75f55bb`). Reproduction: `solidcraft-issues/06-chaser-cylinder-cut-touching-cap-deletes-target.json` (ends with no body). |
+| C8 | Stack_Main Extrude 7: the profile stays native (transition proof: several surface bindings or plane rows). Extrude 7, Split 1, RemoveBody and Hole 1 are imported. | cadmpeg | Diagnosed 15 Nov: the third condition fails (70 inserted faces with a surface without geometry rows). Extrude 7's history state also carries the faces of Thread 2 and C-Pattern 2, whose own states are empty, so the transition cannot prove Extrude 7. Still imported. Save that would settle it: `CONTRIBUTIONS.md`. |
+| C9 | M2 screw (library part) Extrude 2: no unique neutral profile. Extrude 2, Thread 3, Fillet 4 and Revolve 3 are imported. | cadmpeg | Diagnosed 15 Nov: the profile is one body face (the hex socket's bottom), a bounded-face recipe cadmpeg does not bind; curve c240 belongs to another sketch (Revolve 3's axis line). Still imported; check again after upstream #1312. |
+| C10 | Stack_Front_1 Fillet 3: the edges do not bind; left out. | cadmpeg | Diagnosed 15 Nov: 20 edge operands, but the transition deletes 36 edges (a tangent chain or edges a thread split), so cadmpeg's group rule cannot apply. Still left out. Save that would settle it: `CONTRIBUTIONS.md`. |
+| C11 | The converter's C-Pattern axes are inferred, not decoded. | cadmpeg (DR-327, DR-338) | Open; needs controlled saves made in Fusion. |
+| C12 | The three M2 cap screws in the root assembly are not in their holes. Fusion places them with **Screw** features (the fastener tool), which cadmpeg keeps native, so the converter uses the screws' stored occurrence placements: (16, 0, 0) unrotated, (6.93, 10, 12) and (−39.07, 10, 4). Those are the poses before the Screw features moved them. The Screw scopes (root design records 662770, 682205, 686033) also store 4×4 frames at the three hole axes, (6.93, 10, 4), (0, 10, −8) and (−6.93, 10, 4), with the axis along +Y: the final B-rep's clearance bores run y = 10–17 and the M2 threads in Stack Aft 1 y = 17–27, so those frames seat each screw head on the y = 10 face. Which stored frame is a scope's current one is not settled (Screw 3 and Screw 4 each hold both of the last two). | cadmpeg (Screw scope not decoded) | **Fixed in cadmpeg** (15 Nov, branch `f3d/legacy-root-component-path-pose`, PR 10 draft): each part's current pose is in a component-path record cadmpeg did not read. The screws are now at (6.93, 10, 4), (0, 10, −8) and (−6.93, 10, 4) mm, and the Spring at (0, 61, 0) instead of (0, 22.4, 18.6); Fusion's saved display poses agree. No converter change. |
+
+## SolidCraft issues to report upstream
+
+Issues 3, 5 and 6 above (reproductions in `solidcraft-issues/`) and issue 1 (dense spline
+extrude). Reporting posts under your account, so it waits for your go-ahead.
+
+## Newer upstream cadmpeg (found 15 Nov, moving cadmpeg to `../cadmpeg`)
+
+| # | Issue | Where | Status |
+|---|---|---|---|
+| N1 | With the fixes on upstream `main` at `32694147f2` (25 commits newer than the decoder's base `cd06f603a5`), the decode itself has 0 regressions (`decode_diff.py`), but the converter imports more: Piston Chamfer 2 again ("edge is smooth": Revolve 1's region is read differently), Stack Main Extrude 1 ("a region that is no profile loop of its sketch") and everything after it, and test_asy Body Panels Hole 13 (position not on a face) and Side Panels Mirror 6. Likely causes: upstream #1313 (a Box frame origin is now its corner, not its centre; the Body Panels hole may sit on such a box), #1308 and #1298 (nested profile-region selections and sketch-container joins change the profile-selection records the converter reads). | converter | **Done 15 Nov.** The decoder builds from `f3d2sc-next` (upstream `b60c4a8089` plus our six unmerged commits). Converter changes: (1) the nested region selection with atomic regions, regions with holes, and regions that only name curves the sketch lost (new inference `stale_region_left_out`); (2) among arrangement faces, the one whose whole outline is the stored boundary wins; (3) regions that share a boundary count as one solid in a feature mirror (Side Panels Mirror 6); (4) nested selected loops are picked once (Stack Main Extrude 6). Rows as in README. |

@@ -1,0 +1,18 @@
+[package]
+name = "f3d2sc-decode"
+version = "0.1.0"
+edition = "2021"
+# cadmpeg is built from ../../cadmpeg (beside this repository): a checkout of github.com/cadmpeg/cadmpeg
+# with the branch `f3d2sc` (upstream main plus the format fixes waiting to go upstream).
+[dependencies]
+cadmpeg-codec-f3d = { path = "../../cadmpeg/crates/cadmpeg-codec-f3d" }
+cadmpeg-codec-step = { path = "../../cadmpeg/crates/cadmpeg-codec-step" }
+cadmpeg-container = { path = "../../cadmpeg/crates/cadmpeg-container" }
+cadmpeg-core = { path = "../../cadmpeg/crates/cadmpeg-core" }
+cadmpeg-ir = { path = "../../cadmpeg/crates/cadmpeg-ir" }
+serde_json = "1"
+[profile.release]
+opt-level = 1
+codegen-units = 16
+debug = false
+[workspace]

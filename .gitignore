@@ -1,0 +1,12 @@
+/decoder/target/
+/bin/
+__pycache__/
+*.ir.json
+*.ir.json.streams/
+*.reference.step
+*.sc
+/cadmpeg-fork/
+/_to_delete/
+*.bundle
+/cadmpeg/
+!/cadmpeg-f3d2sc.bundle
