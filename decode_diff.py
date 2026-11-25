@@ -19,6 +19,8 @@ import sys
 import tempfile
 import zipfile
 
+import ir_compat
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -46,7 +48,7 @@ def summarise(decoder, path, td):
     r = subprocess.run([decoder, path, out], capture_output=True, text=True)
     if r.returncode != 0:
         return {"error": (r.stderr.strip().splitlines() or ["?"])[-1][:200]}
-    ir = json.load(open(out))
+    ir = ir_compat.upgrade(json.load(open(out)))
     m = ir["model"]
     kinds = collections.Counter()
     feats = {}

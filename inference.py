@@ -62,6 +62,14 @@ HEURISTICS = {
     "skip_unconvertible":
         "a feature that changes existing bodies and can be neither converted nor imported is left out, so the "
         "rest of the timeline still converts (the result lacks it; reported under 'skipped')",
+    "insert_pose_from_component_path":
+        "a Component Insert's occurrence takes the current pose of the component-path record stored for the "
+        "record before the insert's first reference (centimetres), where cadmpeg's pose differs from it",
+    "screw_occurrences_from_component_paths":
+        "a Screw (fastener) feature cadmpeg gives no occurrence of its own: one occurrence of the linked "
+        "screw design its library data names (by display name), at the component-path pose stored for "
+        "the record before the Screw's first reference (centimetres, as Fusion stores them); it replaces "
+        "that design's one unplaced occurrence",
     "no_geometry_by_absence":
         "a native feature with no parameters and no body data (Fusion's 'Screw') makes no geometry",
     "region_by_arrangement":

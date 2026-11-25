@@ -35,10 +35,14 @@ import planar
 from fusion_raw import CM, Raw  # noqa: E402
 from inference import HEURISTICS, Inference  # noqa: E402
 import diagnose as diag  # noqa: E402
+import ir_compat  # noqa: E402
 
 EPS = 1e-6  # mm: sketch endpoints closer than this are one point
 CENTRE_TOL = 1e-3  # mm: body centre agreement in --check
 APPROX_TOL = 2.0  # mm: centres cadmpeg marks inexact (loose boxes) may differ up to this
+SC_BASELINE = (0, 40, 1)  # the oldest SolidCraft the scripts are written for (without --solidcraft)
+SC_KNOTS = (0, 49, 0)  # sketch.spline.control_knots; dense splines extrude (SolidCraft issue 1)
+SC_THREADED_CUT = (0, 49, 0)  # a cut by a threaded tool keeps its target (SolidCraft issue 3)
 SPLINE_TOL = 1e-4  # mm: default deviation allowed when refitting a dense spline
 DENSE_POLE_GAP = 1e-3  # mm: control points closer than this mark a spline as dense
 
@@ -102,6 +106,7 @@ class Converter:
                  refused=None, unvalidated=None):
         self.spline_tol = spline_tol
         self.sc_cli = None  # solidcraft-cli, for inferences that measure the final B-rep
+        self.sc_target = SC_BASELINE  # the SolidCraft version the script is written for
         self.script_dir = None
         self.refused = refused or {}  # timeline ordinal -> SolidCraft's error when it ran the feature
         self.unvalidated = unvalidated or {}  # timeline ordinal -> SMLib self-check message: run unchecked
@@ -444,6 +449,13 @@ class Converter:
                 poles, w = nurbs_poles(cv)
                 if max(w) - min(w) > 1e-12:
                     raise Gap("rational NURBS sketch curve (SolidCraft scripts take non-rational control splines)")
+                if self.sc_target >= SC_KNOTS and 1 <= deg <= 9 and len(poles) <= 500:
+                    # SolidCraft 0.49 takes the spline as it is: its own knots, any degree to 9
+                    poles[0], poles[-1] = snap(poles[0]), snap(poles[-1])
+                    self.emit("sketch.spline.control_knots", {"points": poles, "degree": deg, "knots": knots, **extra})
+                    counters["s"] += 1
+                    ids[e["id"]] = f"s{counters['s']}"
+                    continue
                 if deg not in (3, 5):
                     raise Gap(f"degree {deg} NURBS sketch curve (SolidCraft scripts take degree 3 or 5)")
                 gaps = [math.dist(a_, b_) for a_, b_ in zip(poles, poles[1:])]
@@ -917,9 +929,20 @@ class Converter:
         bodies it makes or changes, bring those bodies in from the f3d's final B-rep (they end up
         non-editable) and go on with the timeline. Returns whether it could."""
         ns = self.ns_of_feature.get(f["id"])
-        if ns is None or not self.derive_step or not f.get("_A") or not self.infer.enabled("freeze_from_final_brep"):
+        slots = None
+        if (ns is None or not f.get("_A")) and len(self.ns) == 1:
+            # No body data of its own (a pattern whose seeds the decoder does not give): the
+            # bodies the next feature with body data finds already there are the ones it can
+            # have changed; they come in final, with every later feature changing them.
+            nxt = next((g for g in self.feats if g.get("ordinal", 0) > f.get("ordinal", 0)
+                        and self.ns_of_feature.get(g["id"]) is self.ns[0] and g.get("_A")), None)
+            if nxt is not None:
+                ns = self.ns[0]
+                slots = sorted(set(nxt["_A"]) - set(self.new_slots.get(nxt["id"], [])))
+        if ns is None or not self.derive_step or not (slots or f.get("_A")) or not self.infer.enabled("freeze_from_final_brep"):
             return False
-        slots = sorted(set(f["_A"]) | set(self.new_slots.get(f["id"], [])))
+        if slots is None:
+            slots = sorted(set(f["_A"]) | set(self.new_slots.get(f["id"], [])))
         # Later features that change these bodies (or bodies made from them) go with them: the
         # bodies come in as they end up, and those features are left to the import.
         S, tail = set(slots), []
@@ -936,6 +959,8 @@ class Converter:
         gone = set(self.removed.get(ns.index, []))
         picks = []
         for s_ in sorted(S):
+            if tail and s_ in gone and s_ in final and self.final_body_for(final[s_]) is not None:
+                gone.discard(s_)  # a final body stands where it ends: not removed after all
             if tail and (s_ in gone or s_ not in final):
                 if s_ in slots and s_ not in final:
                     return False
@@ -1564,6 +1589,17 @@ class Converter:
         """A box or cylinder primitive that makes a new body. cadmpeg gives its sizes but not
         where it stands, so it is placed by the centre Fusion records for its body, with its
         sides along the world axes (inference primitive_placed_by_body_centre)."""
+        so = d.get("solid") or {}
+        if so.get("kind") == "sphere":
+            # cadmpeg after CADIR v11: a sphere centred on the primitive's frame
+            if so.get("latitudes") or so.get("longitude"):
+                raise Gap("partial sphere primitive")
+            pl = d.get("placement") or []
+            if len(pl) != 3:
+                raise Gap("sphere primitive without a placement")
+            r = so.get("radius")
+            r = r.get("value") if isinstance(r, dict) else r
+            return self.feat_sphere(f, {"center": {k: pl[i][3] for i, k in enumerate("xyz")}, "radius": r, "op": d.get("op")})
         ns = self.ns_of_feature.get(f["id"])
         new = self.new_slots.get(f["id"], [])
         if ns is None or len(new) != 1 or new[0] not in f.get("_C", {}) or new[0] not in f.get("_exact", set()):
@@ -1602,6 +1638,25 @@ class Converter:
         self.bodies.add(ns.name(new[0]))
         self.adopt(ns, new[0], ns.name(new[0]))
         self.feature_names[f["id"]] = f["name"]
+
+    def feat_sphere(self, f, d):
+        """A sphere primitive: cadmpeg gives its centre in model space and its radius. Where
+        Fusion records the centre of the body it makes, the two must agree."""
+        c, r = d.get("center"), d.get("radius")
+        if not isinstance(c, dict) or not r:
+            raise Gap("sphere without a decoded centre or radius")
+        C = [c[k] for k in "xyz"]
+        op = {"new_body": "new", "join": "join", "cut": "cut", "intersect": "intersect"}.get(d.get("op"))
+        if op is None:
+            raise Gap(f"sphere operation {d.get('op')!r}")
+        new = self.new_slots.get(f["id"], [])
+        if op == "new" and len(new) == 1 and new[0] in f.get("_exact", set()):
+            got = f.get("_C", {}).get(new[0])
+            if got is not None and math.dist(got, C) > 1e-3:
+                raise Gap(f"sphere centre {rnd(C)} is not its body's recorded centre {rnd(list(got))}")
+        p = {"radius": r, "center": rnd(C), "operation": op, "name": self.unique(f["name"])}
+        self.emit_body_op(f, "solid.sphere", p, op)
+        self.feature_names[f["id"]] = p["name"]
 
     def feat_hole(self, f, d):
         pls = d.get("placements", [])
@@ -1669,7 +1724,7 @@ class Converter:
         if op is None:
             raise Gap(f"combine operation {d.get('op')!r}")
         threaded = [t for t in tools if (ns.index, t) in self.thread_axes] \
-            if op == "cut" and self.infer.enabled("split_threaded_cut_tool") else []
+            if op == "cut" and self.sc_target < SC_THREADED_CUT and self.infer.enabled("split_threaded_cut_tool") else []
         plain = [t for t in tools if t not in threaded]
         tname = self.names(ns, target)[0]
         if plain or not threaded:
@@ -1727,6 +1782,8 @@ class Converter:
                 raise Gap(f"{form} seed kind {s['kind']!r}")
         if feats and seed_bodies:
             raise Gap(f"{form} of features and bodies together")
+        if not feats and not seed_bodies:
+            raise Gap(f"{form} whose seeds the decoder does not give")
         new = self.new_slots.get(f["id"], [])
         if feats:
             sel["features"] = feats
@@ -2322,7 +2379,8 @@ class Converter:
                     "fillet": self.feat_fillet, "chamfer": self.feat_chamfer,
                     "assembly_joint": self.feat_no_geometry, "datum_point": self.feat_no_geometry,
                     "insert_component": self.feat_no_geometry, "component_transfer": self.feat_no_geometry,
-                    "split_body": self.feat_split, "primitive": self.feat_primitive, "block": self.feat_primitive}
+                    "split_body": self.feat_split, "primitive": self.feat_primitive, "block": self.feat_primitive,
+                    "sphere": self.feat_sphere}
         self.stopped = False
         for f in self.feats:
             d = f.get("definition", {})
@@ -2388,6 +2446,18 @@ class Converter:
                                               "AsBuiltJoint", "RigidGroup"):
                 h = self.feat_no_geometry
             elif kind == "native" and tag == "CopyPaste" and self.occurrence_copy(f):
+                h = self.feat_no_geometry
+            elif kind == "native" and tag == "Derived Base Feature" and not f.get("outputs") \
+                    and not (f.get("source_properties") or {}).get("body_centers"):
+                # cadmpeg (CADIR v11) lists a derive it cannot resolve; the bodies it brings in
+                # come from the final B-rep as bodies no feature made (import_preexisting)
+                self.notes.append(f"{f['name']}: derive not decoded by cadmpeg; its bodies come in from the final B-rep")
+                h = self.feat_no_geometry
+            elif kind == "native" and tag == "Body history change":
+                # cadmpeg (CADIR v11): a body's final B-rep differs from the last feature it
+                # decodes, by history it cannot read; the final-shape check judges the result
+                self.notes.append(f"{f['name']}: cadmpeg reports body changes after the last decoded feature; "
+                                  "not converted (the final-shape check compares the result)")
                 h = self.feat_no_geometry
             elif kind == "native" and tag == "Screw" and self.infer.enabled("no_geometry_by_absence") \
                     and not (f.get("source_properties") or {}).get("body_centers") \
@@ -2505,6 +2575,30 @@ def nurbs_poles(cv):
 def clamped_knots(n_poles, p):
     spans = n_poles - p
     return [0.0] * (p + 1) + [i / spans for i in range(1, spans)] + [1.0] * (p + 1)
+
+
+def parse_version(v):
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", v or "")
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
+def solidcraft_target(a):
+    """The SolidCraft version to write for: --solidcraft, else the CLI's own, else the baseline."""
+    if getattr(a, "solidcraft", None):
+        v = parse_version(a.solidcraft)
+        if v is None:
+            sys.exit(f"f3d2sc: --solidcraft {a.solidcraft!r}: give a version such as 0.49.1")
+        return v
+    cli = getattr(a, "check", None) or getattr(a, "build", None)
+    if cli:
+        try:
+            r = subprocess.run([cli, "--version"], capture_output=True, text=True, timeout=60)
+            v = parse_version(r.stdout)
+            if v:
+                return v
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return SC_BASELINE
 
 
 def refit_spline(P, U, p, tol, max_poles=200):
@@ -2888,7 +2982,7 @@ def decode(f3d: str, decoder: str, workdir: str, step: str | None):
 
 def load_ir(ir_path):
     with open(ir_path) as fh:
-        ir = json.load(fh)
+        ir = ir_compat.upgrade(json.load(fh))
     # The design stream: the BulkStream.dat cadmpeg's native records name (archives differ:
     # FusionAssetName[Active]/FusionDesignSegmentType1/, Design1/, ...).
     root = ir_path + ".streams"
@@ -2904,6 +2998,7 @@ def load_ir(ir_path):
     if pick is None:
         pick = next((c for c in cands if "Design" in c and "Browser" not in c and "ACT" not in c), None)
     bulk = open(os.path.join(root, pick), "rb").read() if pick else None
+    ir["_bulk_path"] = os.path.join(root, pick) if pick else None
     return ir, bulk
 
 
@@ -3030,6 +3125,7 @@ def convert_design(a, src, out, td, ir_path=None, f3d=None, step=None, pre=None,
                          refused=refused, unvalidated=unvalidated)
         conv.offset_by_cut = by_cut
         conv.sc_cli, conv.script_dir = a.check or a.build, os.path.dirname(os.path.abspath(out))
+        conv.sc_target = a.sc_target
         gaps = conv.run(a.until)
         problems = check(conv, a.check, td, os.path.dirname(os.path.abspath(out))) if a.check else []
         if a.build and not a.check:
@@ -3206,6 +3302,130 @@ def compose(A, B):
     return [R[i] + [t[i]] for i in range(3)]
 
 
+def screw_library_json(bulk: bytes, offset: int) -> dict | None:
+    """The library data a Screw scope stores after its header: one JSON object."""
+    i = bulk.find(b'{"Filename"', offset, offset + 4096)
+    if i < 0:
+        return None
+    depth, instr, esc = 0, False, False
+    for j in range(i, min(len(bulk), i + (1 << 20))):
+        c = bulk[j]
+        if instr:
+            if esc:
+                esc = False
+            elif c == 0x5C:
+                esc = True
+            elif c == 0x22:
+                instr = False
+            continue
+        if c == 0x22:
+            instr = True
+        elif c == 0x7B:
+            depth += 1
+        elif c == 0x7D:
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(bulk[i:j + 1].decode("utf-8"))
+                except ValueError:
+                    return None
+    return None
+
+
+def screw_occurrences(ir, names, infer):
+    """Occurrences for Screw (fastener) features that cadmpeg leaves without one (inference
+    screw_occurrences_from_component_paths). Changes ir["model"]["occurrences"]; returns notes."""
+    m = ir["model"]
+    nat = (ir.get("native") or {}).get("f3d") or {}
+    screws = [f for f in m.get("features", []) if f.get("source_tag") == "Screw" and not f.get("suppressed")]
+    if not screws and not any(f.get("source_tag") == "Component Insert" for f in m.get("features", [])):
+        return []
+    bulk = open(ir["_bulk_path"], "rb").read() if ir.get("_bulk_path") else None
+    if bulk is None:
+        return ["Screw features: the design stream is missing, so their screws are not placed"]
+    carriers = {}
+    for c in nat.get("design_component_paths", []):
+        el = c.get("elements") or []
+        if len(el) == 1 and el[0].get("discriminator") == 0 and c.get("transform"):
+            carriers.setdefault(el[0]["record_index"], []).append(c["transform"])
+    shown = {p["path"][-1] for p in nat.get("display_poses", []) if (p.get("binding") or {}).get("state") == "bound"}
+    notes = insert_poses(m, carriers, infer)
+    by_name = {}
+    for path, nm in names.items():
+        by_name.setdefault(nm, path)
+    added = {}
+    if not infer.enabled("screw_occurrences_from_component_paths"):
+        screws = []
+    for f in screws:
+        sp = f.get("source_properties") or {}
+        try:
+            target = int(sp["reference:0"]) - 1
+            off = int(re.search(r"#(\d+)$", f.get("native_ref", "")).group(1))
+        except (KeyError, ValueError, AttributeError):
+            notes.append(f"{f['name']}: no occurrence record named; its screw is not placed")
+            continue
+        if any(target - 2 <= t <= target for t in shown):
+            continue  # an occurrence cadmpeg placed already shows it (its record lies just before)
+        lib = screw_library_json(bulk, off) or {}
+        path = by_name.get(lib.get("DNAME"))
+        T = carriers.get(target)
+        if path is None or not T or len(T) != 1:
+            notes.append(f"{f['name']}: screw {lib.get('DNAME', '?')!r}: " +
+                         ("no linked design of that name in the archive" if path is None else
+                          "no unique stored pose") + "; not placed")
+            continue
+        T = T[0]
+        X = [[T[i][0], T[i][1], T[i][2], T[i][3] * 10.0] for i in range(3)]  # cm -> mm
+        added.setdefault(path, []).append({
+            "id": f"f3d2sc:screw-occurrence#{target}", "name": f["name"], "parent": {"kind": "root"},
+            "prototype": {"document": {"path": path, "resolution": "path"}, "scope": "external"},
+            "transform": X, "ordinal": 1000 + f.get("ordinal", 0), "scale": [1.0, 1.0, 1.0]})
+        infer.use("screw_occurrences_from_component_paths", f["name"],
+                  f"{lib.get('DNAME')} at {[round(X[i][3], 3) for i in range(3)]}")
+    if added:
+        I = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+        keep = []
+        for o in m.get("occurrences", []):
+            doc = (o.get("prototype") or {}).get("document", {}).get("path")
+            unplaced = re.fullmatch(r"f3d:xref:reference#\d+", o.get("native_ref") or "") and \
+                all(abs(a_ - b_) < 1e-12 for r1, r2 in zip(o.get("transform") or I, I) for a_, b_ in zip(r1, r2))
+            if doc in added and unplaced:
+                notes.append(f"the unplaced occurrence of {names.get(doc, doc)} is replaced by its Screw features' "
+                             f"{len(added[doc])} placed screw(s)")
+                continue
+            keep.append(o)
+        m["occurrences"] = keep + [o for v in added.values() for o in v]
+    return notes
+
+
+def insert_poses(m, carriers, infer):
+    """Component Insert occurrences whose current pose cadmpeg misses: the component-path record
+    stored for the insert's occurrence record (inference insert_pose_from_component_path)."""
+    if not infer.enabled("insert_pose_from_component_path"):
+        return []
+    occs = {o["id"]: o for o in m.get("occurrences", [])}
+    notes = []
+    for f in m.get("features", []):
+        if f.get("source_tag") != "Component Insert" or f.get("suppressed"):
+            continue
+        o = occs.get((f.get("definition") or {}).get("occurrence"))
+        try:
+            T = carriers.get(int((f.get("source_properties") or {})["reference:0"]) - 1)
+        except (KeyError, ValueError):
+            continue
+        if o is None or not T or len(T) != 1:
+            continue
+        X = [[T[0][i][0], T[0][i][1], T[0][i][2], T[0][i][3] * 10.0] for i in range(3)]  # cm -> mm
+        cur = o.get("transform") or [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+        d = max(abs(a_ - b_) for r1, r2 in zip(cur, X) for a_, b_ in zip(r1, r2))
+        if d > 1e-6:
+            o["transform"] = X
+            notes.append(f"{f['name']}: its occurrence moved to the pose its component-path record stores "
+                         f"(cadmpeg's differed by up to {d:.3g})")
+            infer.use("insert_pose_from_component_path", f["name"], f"translation {[round(X[i][3], 3) for i in range(3)]}")
+    return notes
+
+
 def assembly_commands(ir, sc_of, label):
     """Commands placing each occurrence of a design: its component's (or linked design's)
     script built as a .sc, inserted and moved to where Fusion has it (nested occurrences are
@@ -3229,7 +3449,15 @@ def assembly_commands(ir, sc_of, label):
             par = occs[par["occurrence"]].get("parent", {})
         return d
 
-    cmds, notes, ok, used = [], [], True, {}
+    def hidden(o, depth=0):
+        """Hidden in Fusion (CADIR v11 states it), or inside a hidden occurrence."""
+        if o.get("visible") is False:
+            return True
+        par = o.get("parent", {})
+        return par.get("kind") == "occurrence" and par.get("occurrence") in occs and depth < 64 \
+            and hidden(occs[par["occurrence"]], depth + 1)
+
+    cmds, notes, ok, used, hide = [], [], True, {}, []
     for o in sorted(occs.values(), key=lambda o: (o.get("ordinal", 0), depth(o))):
         pr = o.get("prototype", {})
         key = ("local", pr.get("definition")) if pr.get("scope") == "local" else ("doc", pr.get("document", {}).get("path"))
@@ -3247,10 +3475,15 @@ def assembly_commands(ir, sc_of, label):
         used[disp] = used.get(disp, 0) + 1
         name = disp if used[disp] == 1 else f"{disp} ({used[disp]})"
         cmds.append({"command": "component.insert_design", "params": {"path": path, "name": name}})
+        if hidden(o):
+            hide.append(name)
         T = world(o)
         if not is_identity(T):
             cmds.append({"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "to_matrix": [rnd(r) for r in T],
                                                                   "move_grounded": True}})
+    if hide:
+        cmds.append({"command": "browser.visibility", "params": {"visible": False, "features": hide}})
+        notes.append(f"{len(hide)} occurrence(s) hidden in Fusion are hidden: {', '.join(hide)}")
     if any("placed at the identity without proof" in l_["message"] for l_ in ir.get("decode_losses", [])):
         notes.append("cadmpeg could not decode the occurrences' placements and put them at the origin; the f3d2sc "
                      "checks found no placement records either (parts modelled in place fit that). Check the result.")
@@ -3404,6 +3637,7 @@ def convert_f3z(a, td):
         built.append(rgot[None][0][:-3])
     else:
         built += [v[0][:-3] for v in rgot.values()]
+    notes += screw_occurrences(rir, names, a.infer.for_design("root"))
     acmds, anotes, ok = assembly_commands(rir, {**sc_of, **{k: v for k, v in rgot.items() if k is not None}}, rname)
     cmds += acmds
     notes += anotes
@@ -3542,6 +3776,9 @@ def main():
     ap.add_argument("--spline-tol", type=float, default=SPLINE_TOL, help=f"mm a refitted dense spline may deviate (default {SPLINE_TOL})")
     ap.add_argument("--no-refit", action="store_true", help="keep dense splines as they are (SolidCraft may refuse to extrude them)")
     ap.add_argument("--diagnose", metavar="REPORT", help="write a redacted report (no geometry, names or values) to share")
+    ap.add_argument("--solidcraft", metavar="VERSION",
+                    help="the SolidCraft version the scripts are for, e.g. 0.49.1 (default: the --check/--build CLI's "
+                         f"version, else {'.'.join(map(str, SC_BASELINE))}); newer versions get exact splines and no workaround for fixed SolidCraft issues")
     ap.add_argument("--build", metavar="SOLIDCRAFT_CLI", help="with an .f3z: build each linked design into a .sc and evaluate the assembly")
     ap.add_argument("--overrides", metavar="JSON", help="explicit answers for what the file leaves open (see inference.py)")
     ap.add_argument("--no-infer", metavar="NAME", action="append", default=[],
@@ -3553,6 +3790,7 @@ def main():
             print(f"{k}\n    {v}")
         sys.exit(0)
     a.infer = Inference.from_args(a.overrides, a.no_infer)
+    a.sc_target = solidcraft_target(a)
     if a.build is None and a.check:
         a.build = a.check  # SolidCraft is at hand: also build each script into a .sc the app can open
     if not a.f3d and not a.ir:

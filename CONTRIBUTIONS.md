@@ -44,6 +44,22 @@ topic branches (topic 5 and 6 each take their own half of it).
 | 9 | Chamfer flip byte | Byte 22 of a two-distance or distance-angle chamfer set is the flip state. With 0 the (first) distance lies on the face whose coedge runs with the edge, with 1 on the other face. The parser refused a flipped set; `flip_direction` is now decoded | `f3d/chamfer-set-flip` | DR-341 (narrowed to tangent chains and split faces) |
 | 10 | Current pose from a component path with a legacy target | An inserted part's current pose is stored in a component-path record. Older files name the part there by a legacy target reference, which cadmpeg did not read, so the occurrence kept an earlier matrix. Fixes the three M2 screws and the Spring of the chaser | `f3d/legacy-root-component-path-pose` | — |
 
+## Next cadmpeg topics (25 Nov, upstream `61d47445e0`)
+
+All ten earlier topics are merged. Two new ones, found on a private test assembly (ISSUES A1, A2), each now worked
+around in the converter from cadmpeg's native records; they belong in cadmpeg with a CC0 Fusion
+save (an assembly with one linked screw design inserted by several Screw features, and a linked
+sub-assembly moved by a joint after insertion):
+
+- **One occurrence per Screw feature.** A Screw scope inserts one occurrence of the fastener
+  design its library JSON names; its current world pose is the component-path record (one
+  element, discriminator 0) naming the record just before the scope's first reference, in
+  centimetres. cadmpeg reports these records as "component-path carriers name no unique expanded
+  local occurrence" and keeps one occurrence of the design at the origin.
+- **Current pose of an external Component Insert.** The same component-path record exists for
+  a Component Insert's occurrence; it holds the current pose (Fusion's display pose agrees),
+  while cadmpeg keeps the insert's decoded placement.
+
 ## Results of the focused session (15 Nov, evening)
 
 Offsets are in the design's `BulkStream.dat`. The chaser files are private: describe them in a

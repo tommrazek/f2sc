@@ -92,25 +92,17 @@ git clone https://github.com/cadmpeg/cadmpeg
 
 This downloads about 220 MB.
 
-**Step 3. Add the fixes this converter needs.** Upstream cadmpeg has not merged all of them yet.
-They come in `f2sc/cadmpeg-f3d2sc.bundle`, a git bundle (a file holding git branches). Fetch
-all its branches into the clone and check out `f3d2sc-next`, which is upstream cadmpeg plus every
-fix:
+**Step 3. Check out the tested cadmpeg commit.** Every fix this converter needed is merged
+upstream (see [CADMPEG-PRS.md](CADMPEG-PRS.md)), so plain cadmpeg is enough. Use the commit the
+converter was last tested with:
 
 ```bash
-git -C cadmpeg fetch ../f2sc/cadmpeg-f3d2sc.bundle 'refs/heads/*:refs/heads/*'
-```
-```bash
-git -C cadmpeg checkout f3d2sc-next
+git -C cadmpeg checkout --detach 61d47445e0
 ```
 
-The bundle needs upstream cadmpeg `main` at `b60c4a8089` or later in the clone; a fresh clone
-always has it. The `-C cadmpeg` makes git act on the `cadmpeg` folder, so you stay in the parent
-folder.
-
-> The individual fixes are also on the fork `github.com/tommrazek/cadmpeg`, one `f3d/<topic>`
-> branch per pull request (see [CADMPEG-PRS.md](CADMPEG-PRS.md)). The combined branch
-> `f3d2sc-next` is only in the bundle.
+The `-C cadmpeg` makes git act on the `cadmpeg` folder, so you stay in the parent folder. A newer
+`main` usually works too, but cadmpeg changes its output format from time to time (CADIR v11
+did, on 24 Nov); run the regression check (section 5) after moving to one.
 
 **Step 4. Build the decoder.** Go into the repository, build, and copy the binary to `bin/`:
 
@@ -138,11 +130,11 @@ bin/f3d2sc-decode --version
 It must print
 
 ```
-f3d2sc-decode cadmpeg 32e4b3a099d0ac61a0ad34a2e43930ddd5492d0b
+f3d2sc-decode cadmpeg 61d47445e0927da063661bb9c3f4f80407995f66
 ```
 
-The hash is the cadmpeg commit the decoder was built from (`f3d2sc-next` as of 15 Nov). If it
-prints another hash, the clone is on another branch; see [Troubleshooting](#6-troubleshooting).
+The hash is the cadmpeg commit the decoder was built from (upstream `main` as of 25 Nov). If it
+prints another hash, the clone is on another commit; see [Troubleshooting](#6-troubleshooting).
 
 **Step 6. Tell the commands where SolidCraft is.** The examples below write `SOLIDCRAFT` for the
 CLI's path. Set it once per terminal:
@@ -257,6 +249,7 @@ python3 f3d2sc.py DESIGN.f3d|DESIGN.f3z [-o OUT] [options]
 | `--report FILE` | Write gaps, notes, imports and check results as JSON. |
 | `--diagnose FILE` | Write a redacted report you can share for a design you cannot share (7.6). |
 | `--step FILE` | Also write Fusion's final shape as STEP. |
+| `--solidcraft VERSION` | The SolidCraft version the scripts are for, e.g. `0.49.1`. Default: the version of the `--check`/`--build` CLI, else 0.40.1. From 0.49 the scripts use exact splines and skip the workarounds for SolidCraft issues fixed there (section 9); such scripts need 0.49 or newer. |
 | `--spline-tol MM` | How far a refitted dense spline may deviate (default 0.0001 mm). |
 | `--no-refit` | Keep dense splines as they are (SolidCraft may refuse to extrude them). |
 | `--overrides FILE` | Explicit answers for what the file leaves open (see `inference.py`). |
@@ -287,6 +280,8 @@ in the report under `assumptions` where it fired, and can be switched off with
 | `revolve_axis_through_body_centre`, `revolve_sketch_from_records` | A Revolve the decoder leaves unresolved. |
 | `thread_face_by_radius`, `thread_start_at_axis_end`, `thread_record_by_strings` | Threads the decoder resolves only in part. |
 | `primitive_placed_by_body_centre` | Box and cylinder primitives, whose placement the decoder does not give. |
+| `screw_occurrences_from_component_paths` | A Screw (fastener) feature cadmpeg gives no occurrence: one occurrence of the screw design its library data names, at the pose stored for it. |
+| `insert_pose_from_component_path` | A Component Insert's occurrence takes the current pose stored for it where cadmpeg's differs. |
 | `owner_from_body_evidence`, `split_piece_by_final_side`, `no_geometry_by_absence` | Which component a feature belongs to, which piece a Remove Body removes, features that make no geometry. |
 
 ### Converting a design you cannot share
@@ -305,9 +300,9 @@ and ids are masked, and every number in free text becomes `<x>`. Read it before 
 
 ## 4. Keeping cadmpeg up to date
 
-The fixes in `f3d2sc-next` are being upstreamed as pull requests to `cadmpeg/cadmpeg`
-([CADMPEG-PRS.md](CADMPEG-PRS.md) lists each one and its state). Merged so far: #1358, #1359,
-#1360, #1363. Open: #1357, #1361, #1362, #1364, #1377, #1378.
+All ten fixes made for this converter are merged into `cadmpeg/cadmpeg`
+([CADMPEG-PRS.md](CADMPEG-PRS.md) lists them), the last on 21 Nov. The decoder builds from plain
+upstream cadmpeg.
 
 **The stale-decoder warning.** The decoder records the cadmpeg commit it was built from. Before
 each conversion the converter compares it with `../cadmpeg`'s current commit and prints
@@ -316,43 +311,27 @@ each conversion the converter compares it with `../cadmpeg`'s current commit and
 f3d2sc: WARNING: bin/f3d2sc-decode is built from cadmpeg <hash>, but ../cadmpeg is at <hash>. Rebuild the decoder (README, Set-up).
 ```
 
-when they differ. A stale decoder decodes less (on the film scanner an old one left the cuts out
-and the root assembly empty), so rebuild whenever you change what `../cadmpeg` has checked out:
+when they differ. A stale decoder decodes less, so rebuild whenever you change what
+`../cadmpeg` has checked out:
 
 ```bash
 (cd decoder && cargo build --release) && cp decoder/target/release/f3d2sc-decode bin/
 ```
 
-**When this repository's bundle changes** (after `git pull`), refresh the branches and rebuild.
-git refuses to fetch into a branch that is checked out, so step off it first, fetch, and check
-`f3d2sc-next` out again (run from inside `f2sc`):
-
-```bash
-git -C ../cadmpeg checkout --detach
-```
-```bash
-git -C ../cadmpeg fetch ../f2sc/cadmpeg-f3d2sc.bundle '+refs/heads/*:refs/heads/*'
-```
-```bash
-git -C ../cadmpeg checkout f3d2sc-next
-```
-
-The `+` lets the fetch replace branches that were rebased. Then rebuild the decoder (above).
-
-**When all the pull requests are merged upstream**, plain cadmpeg is enough:
+**Moving to newer upstream work** (run from inside `f2sc`):
 
 ```bash
 git -C ../cadmpeg fetch origin && git -C ../cadmpeg checkout --detach origin/main
 ```
 
-then rebuild. To pick up new upstream work before that, rebase the fixes onto it in `../cadmpeg`
-(`git rebase origin/main f3d2sc-next`), rebuild, and run the regression check (section 5).
+then rebuild and run the regression check (section 5) against the decoder you had.
 
-**Recreating the bundle** after a change in `../cadmpeg` (maintainers only):
-
-```bash
-git -C ../cadmpeg bundle create ../f2sc/cadmpeg-f3d2sc.bundle f3d2sc-next $(git -C ../cadmpeg for-each-ref --format='%(refname:short)' 'refs/heads/f3d/*') ^origin/main
-```
+**Output formats.** cadmpeg's JSON changed shape with CADIR v11 (24 Nov): the design and
+geometry moved out of `model` into their own sections, some design arenas are left out of the
+JSON (the decoder writes them as `wire_omitted`), and many records gained a `{kind, value}`
+wrapper. `ir_compat.py` turns a v11 document back into the shape the converter reads, so the
+converter takes the output of either. A decoder built before v11 (from the old `f3d2sc-next`
+branch in `cadmpeg-f3d2sc.bundle`) still works.
 
 ---
 
@@ -396,7 +375,7 @@ It must end with `0 regression(s)` (a feature that resolved before and does not 
 | `fatal: '../f2sc/cadmpeg-f3d2sc.bundle' does not appear to be a git repository` | You ran the command from the wrong folder, or cadmpeg is cloned inside `f2sc`. If `f2sc/cadmpeg` exists, move it out: from inside `f2sc` run `mv cadmpeg ../cadmpeg`, then `cd ..` and repeat step 3. |
 | `error: failed to load manifest for dependency 'cadmpeg-codec-f3d'` ... `failed to read .../cadmpeg/crates/cadmpeg-codec-f3d/Cargo.toml` during the build | The decoder found no `../cadmpeg`: wrong layout (see 1.2). Fix the layout, then rebuild. |
 | `bin/f3d2sc-decode --version` prints `cadmpeg unknown` | `../cadmpeg` is not a git clone (e.g. a downloaded zip), so the build cannot record its commit. Clone it with git (step 2). |
-| `--version` prints a different hash | `../cadmpeg` is on another branch. `git -C ../cadmpeg branch --show-current` should say `f3d2sc-next`; check it out and rebuild. |
+| `--version` prints a different hash | `../cadmpeg` is on another commit. `git -C ../cadmpeg rev-parse HEAD` should start with `61d47445e0`; check it out (step 3) and rebuild. |
 | `f3d2sc: WARNING: ... predates the version stamp` or `... is built from cadmpeg X, but ../cadmpeg is at Y` | The decoder is out of date; rebuild (section 4). |
 | The build is killed, or `signal: 9, SIGKILL` | Out of memory: build with `CARGO_BUILD_JOBS=1`. |
 | `error: rustc ... is not supported` or `rust-toolchain` errors | cadmpeg pins its Rust version in `rust-toolchain.toml`; rustup installs it on the first build. Without rustup (a distribution's `cargo`), install rustup. |
@@ -451,10 +430,11 @@ counts as refused.
 
 ### 7.4 What is mapped
 
-- **Sketches** (planar): lines, arcs, circles, points, construction geometry, and degree-3 or
-  degree-5 clamped uniform splines. Dense splines are refitted by least squares (default 0.1 µm;
-  Fusion's involute gear flanks go from 245 control points to 8). Constraints and dimensions are
-  not carried over.
+- **Sketches** (planar): lines, arcs, circles, points, construction geometry and splines. For
+  SolidCraft 0.49 or newer splines are written exactly (`sketch.spline.control_knots`, degree
+  1–9). For older versions only degree-3 or degree-5 clamped uniform splines are taken, and
+  dense or non-uniform ones are refitted by least squares (default 0.1 µm; Fusion's involute gear
+  flanks go from 245 control points to 8). Constraints and dimensions are not carried over.
 - **Profiles** are picked by points inside each region, not by curve ids, because Fusion and
   SolidCraft split overlapping curves differently. Nested loops belong to the region around them.
 - **Extrude**: one side, two sides or symmetric; blind or through all; start offset; taper;
@@ -466,12 +446,16 @@ counts as refused.
 - **Combine** (join, cut, intersect, keep tools), **Move**, **Remove Body**, **Split Body**.
 - **Mirror** of bodies or features, about a plane from the file or a construction plane.
 - **Circular pattern** of features or bodies.
+- **Primitives**: box and cylinder (placed by their body's centre), sphere (`solid.sphere`, at
+  its decoded centre).
 - **Work planes** parallel to a principal plane.
 - **Components and assemblies**: one script per component or linked design; the root script
   inserts each occurrence and moves it to its current pose (`occurrence.move` with a matrix).
   Nested occurrences are flattened to their placement in the root. Joints, joint origins and
   component inserts make no geometry and are left out with a note; parts placed by joints or by
-  Fusion's Screw (fastener) feature get their current pose from the file.
+  Fusion's Screw (fastener) feature get their current pose from the file. Each Screw feature
+  gets its own placed screw (`screw_occurrences_from_component_paths`). Occurrences hidden in
+  Fusion are hidden (`browser.visibility`), so the result shows what Fusion shows.
 - **Kept tool bodies** that Fusion hides are hidden at the end of the script.
 
 ### 7.5 Checks
@@ -491,13 +475,14 @@ See [3. Converting a design you cannot share](#converting-a-design-you-cannot-sh
 
 ## 8. Benchmark results
 
-SolidCraft 0.40.1, decoder `32e4b3a099` (`f3d2sc-next`), 15 Nov. Every design converts with no
-gaps. Imported = features brought in from Fusion's final shape instead of rebuilt.
+SolidCraft 0.40.1 and 0.49.1, decoder built from upstream cadmpeg `61d47445e0` (CADIR v11),
+25 Nov; both versions give the same results (0.49.1 with exact splines and without the threaded-cut
+workaround). Every design converts with no gaps. Imported = features brought in from Fusion's final shape instead of rebuilt.
 
 | File | Design | Imported | Skipped | Final shape |
 |---|---|---|---|---|
 | `steel_test_articles.f3d` | | 0 | 0 | 2/2 match |
-| `film_scanner.f3d` | component 1 | 0 | 0 | 2 bodies (kept tools hidden), not judged (threaded holes); frame body 1 is 77,868 mm³ (Fusion: 77,137–78,755 mm³), frame body 4 is 64,813 mm³ (Fusion: 64,300–66,141 mm³) |
+| `film_scanner.f3d` | component 1 | 0 | 0 | 2 bodies (cadmpeg now reads the Combines' Keep Tools off), not judged (threaded holes); frame body 1 is 77,868 mm³ (Fusion: 77,137–78,755 mm³), frame body 4 is 64,813 mm³ (Fusion: 64,300–66,141 mm³) |
 | | component 2 | 4 | 0 | match |
 | `test_asy.f3z` | Side / Body / Bottom Panels | 0 / 0 / 1 | 0 | 18/18, 4/4, 2/2 match; the assembly builds to 28 bodies |
 | `dummies/threads.f3d` | 10 threads, one per Fusion setting | 3 (a turned box primitive and the 2 features on it) | 0 | 7/12 match, 4 not judged (modeled threads), 1 lacks a cosmetic thread with an offset |
@@ -511,20 +496,23 @@ by `decode_diff.py`.
 ## 9. SolidCraft issues found
 
 Found with SolidCraft 0.40.1. Reproductions are in `solidcraft-issues/`; run one with
-`"$SOLIDCRAFT" eval solidcraft-issues/<file>`. None is reported upstream yet
-([SOLIDCRAFT-REPORTS.md](SOLIDCRAFT-REPORTS.md) is the draft).
+`"$SOLIDCRAFT" eval solidcraft-issues/<file>`. None was reported upstream
+([SOLIDCRAFT-REPORTS.md](SOLIDCRAFT-REPORTS.md) is the draft). Rechecked with **0.49.1** on 25 Nov:
+issues 1, 2, 3 and 8 are fixed there (each reproduction builds, with the target kept), and the
+converter leaves out its workarounds for them when it writes for 0.49 or newer (`--solidcraft`, or the version of
+the `--check`/`--build` CLI). Issues 5 and 6 come from a private design and were not rechecked.
 
 1. **Extruding a dense degree-5 control spline fails** (`01-dense-spline-extrude.json`). 245
    control points 0.1–15 µm apart extrude into a surface SolidCraft's self-check refuses
-   (`SmSurfOfExtrusion::Test #8 Origin`). The converter refits dense splines.
+   (`SmSurfOfExtrusion::Test #8 Origin`). The converter refits dense splines. *Fixed in 0.49.1.*
 2. **Mirroring a threaded shaft about a plane through its axis and joining it fails the
    self-check** (`02-film-scanner-mirror-join-threaded-shaft.json`; `Edgeuses out of tolerance`).
-   The current conversion no longer hits it.
+   The current conversion no longer hits it. *Fixed in 0.49.1.*
 3. **Cutting with a threaded shaft silently deletes the target body**
    (`03-minimal-threaded-cut-deletes-target.json`, `03-film-scanner-cut-by-threaded-shaft.json`;
    without the thread: `03b-...`). The combine reports success, but the target is gone; it depends
    on where the thread leaves the target. The converter cuts by the tool's two halves
-   (`split_threaded_cut_tool`).
+   (`split_threaded_cut_tool`). *Fixed in 0.49.1; the workaround is used only for older versions.*
 4. **No way to make separate bodies of a body's disjoint pieces.** The converter rebuilds such
    mirrors as body mirrors.
 5. **Offsetting a small bore's face fails the self-check** (`Loop Orientation`), at any
@@ -535,7 +523,8 @@ Found with SolidCraft 0.40.1. Reproductions are in `solidcraft-issues/`; run one
    the cut 1 µm past each end.
 7. **A modeled thread larger than its shaft is refused**; Fusion builds the thread at its
    designation's size. The converter offsets the face first.
-8. **Scripts take clamped uniform splines only**; non-uniform ones are refitted.
+8. **Scripts take clamped uniform splines only**; non-uniform ones are refitted. *0.49 adds
+   `sketch.spline.control_knots` (any knots, degree 1–9); the converter writes splines exactly with it.*
 
 ---
 

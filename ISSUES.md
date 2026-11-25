@@ -38,6 +38,21 @@ up for a focused session in `CONTRIBUTIONS.md` (Open items).
 | C11 | The converter's C-Pattern axes are inferred, not decoded. | cadmpeg (DR-327, DR-338) | Open; needs controlled saves made in Fusion. |
 | C12 | The three M2 cap screws in the root assembly are not in their holes. Fusion places them with **Screw** features (the fastener tool), which cadmpeg keeps native, so the converter uses the screws' stored occurrence placements: (16, 0, 0) unrotated, (6.93, 10, 12) and (−39.07, 10, 4). Those are the poses before the Screw features moved them. The Screw scopes (root design records 662770, 682205, 686033) also store 4×4 frames at the three hole axes, (6.93, 10, 4), (0, 10, −8) and (−6.93, 10, 4), with the axis along +Y: the final B-rep's clearance bores run y = 10–17 and the M2 threads in Stack Aft 1 y = 17–27, so those frames seat each screw head on the y = 10 face. Which stored frame is a scope's current one is not settled (Screw 3 and Screw 4 each hold both of the last two). | cadmpeg (Screw scope not decoded) | **Fixed in cadmpeg** (15 Nov, branch `f3d/legacy-root-component-path-pose`, PR 10 draft): each part's current pose is in a component-path record cadmpeg did not read. The screws are now at (6.93, 10, 4), (0, 10, −8) and (−6.93, 10, 4) mm, and the Spring at (0, 61, 0) instead of (0, 22.4, 18.6); Fusion's saved display poses agree. No converter change. |
 
+## A private test assembly with linked screws (25 Nov)
+
+Found on a private assembly (kept off this repository) with linked parts, a linked sub-assembly, Fusion
+Screw features and joints, converted with the decoder built from upstream cadmpeg `61d47445e0`
+(CADIR v11). Each item names where it lies.
+
+| # | Issue | Where | Status |
+|---|---|---|---|
+| A1 | Each Screw feature inserts one occurrence of a linked screw design, but cadmpeg gives that design one occurrence at the origin, however many Screw features use it ("component-path carriers name no unique expanded local occurrence"). The pose of each screw is stored: a component-path record whose one element names the record just before the Screw scope's first reference, a world pose in centimetres. The library JSON in the Screw scope names the screw design (`DNAME`, the archive's display name). | cadmpeg | **Converter workaround** (inference `screw_occurrences_from_component_paths`): one occurrence per Screw feature at that pose; the unplaced occurrence goes. Verified by fit: the screws' heads land on the faces of the parts they fasten. Belongs in cadmpeg (a PR topic, with a CC0 save). |
+| A2 | A Component Insert of a linked sub-assembly sits 20.8 mm from where Fusion shows it: cadmpeg keeps the insert's decoded placement, while the component-path record for the insert's occurrence (record before its first reference, centimetres) holds the current pose; Fusion's saved display pose agrees with the record. | cadmpeg | **Converter workaround** (inference `insert_pose_from_component_path`). Belongs in cadmpeg with A1. |
+| A3 | CADIR v11 marks occurrences hidden (`visible: false`, from Fusion's hidden-occurrence records); the converter showed them all, so hidden leftovers (parts far from the rest) cluttered the result. | converter | **Fixed:** hidden occurrences are hidden with `browser.visibility`. |
+| A4 | A circular pattern whose seeds cadmpeg does not give became an empty `solid.pattern.circular`, which SolidCraft refuses; the import fallback then found no bodies to import (the pattern has no body data) and the rest of the part was lost. | converter | **Fixed:** such a pattern is a gap, and the fallback imports the bodies the next feature with body data finds (the part comes in as Fusion's final shape). A body the removal plan counted as removed is kept when a final body stands at its centre. |
+| A5 | A Sphere primitive had no mapping. | converter | **Fixed:** `solid.sphere` at the decoded centre (checked against the body's recorded centre). |
+| A6 | One Component Insert names a design that is not in the archive. | — | Left out with a note. |
+
 ## SolidCraft issues to report upstream
 
 Issues 3, 5 and 6 above (reproductions in `solidcraft-issues/`) and issue 1 (dense spline
