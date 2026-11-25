@@ -10,9 +10,9 @@ use std::process::ExitCode;
 /// uncompressed, keeping their archive paths. The converter reads parameters cadmpeg leaves
 /// native from them.
 fn extract_streams(bytes: &[u8], dir: &std::path::Path) -> Result<(), String> {
-    use cadmpeg_core::decode::{DecodeArena, DecodeContext, DecodeMode, DecodePolicy, ResourceLimits};
+    use cadmpeg_core::decode::{DecodeArena, DecodeContext, DecodePolicy, ResourceLimits};
     let arena = DecodeArena::new();
-    let policy = DecodePolicy { mode: DecodeMode::Salvage, limits: ResourceLimits::service() };
+    let policy = DecodePolicy { limits: ResourceLimits::service() };
     let (ctx, root) = DecodeContext::from_root_bytes(bytes, &arena, &policy).map_err(|e| e.to_string())?;
     let snap = cadmpeg_container::ArchiveSnapshot::new(&ctx, root).map_err(|e| e.to_string())?;
     let names: Vec<String> = snap.entries().iter().map(|e| e.name.clone()).collect();
@@ -33,14 +33,14 @@ fn extract_streams(bytes: &[u8], dir: &std::path::Path) -> Result<(), String> {
 
 /// `--entry <in.f3d> <name> <out>`: write one archive entry, decompressed.
 fn extract_entry(a: &[String]) -> Result<(), String> {
-    use cadmpeg_core::decode::{DecodeArena, DecodeContext, DecodeMode, DecodePolicy, ResourceLimits};
+    use cadmpeg_core::decode::{DecodeArena, DecodeContext, DecodePolicy, ResourceLimits};
     let (path, name, out) = match a {
         [_, _, p, n, o, ..] => (p, n, o),
         _ => return Err("usage: f3d2sc-decode --entry <in.f3d> <entry name> <out>".into()),
     };
     let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
     let arena = DecodeArena::new();
-    let policy = DecodePolicy { mode: DecodeMode::Salvage, limits: ResourceLimits::service() };
+    let policy = DecodePolicy { limits: ResourceLimits::service() };
     let (ctx, root) = DecodeContext::from_root_bytes(&bytes, &arena, &policy).map_err(|e| e.to_string())?;
     let snap = cadmpeg_container::ArchiveSnapshot::new(&ctx, root).map_err(|e| e.to_string())?;
     let view = snap.open(&ctx, name).map_err(|e| format!("{name}: {e}"))?;
@@ -72,6 +72,10 @@ fn run() -> Result<(), String> {
     let mut ir = serde_json::to_value(r.ir()).map_err(|e| e.to_string())?;
     if let Some(o) = ir.as_object_mut() {
         o.insert("decode_losses".into(), serde_json::Value::Array(losses));
+        // The CADIR v11 wire leaves out the arenas the converter reads (sketches, their
+        // entities and constraints, ...); the decoded model still holds them.
+        let omitted = r.ir().model.omitted_arenas_value().map_err(|e| e.to_string())?;
+        o.insert("wire_omitted".into(), omitted);
     }
     std::fs::write(&a[2], serde_json::to_vec(&ir).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     if let Some(step) = a.get(3) {
