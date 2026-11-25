@@ -10,3 +10,4 @@ __pycache__/
 *.bundle
 /cadmpeg/
 !/cadmpeg-f3d2sc.bundle
+.DS_Store
