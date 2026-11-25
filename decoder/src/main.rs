@@ -105,7 +105,16 @@ fn keep_bodies(ir: &cadmpeg_ir::CadIr, keep: &[usize]) -> Result<cadmpeg_ir::Cad
     use serde_json::Value;
     use std::collections::HashSet;
     let mut v = serde_json::to_value(ir).map_err(|e| e.to_string())?;
-    let model = v.get_mut("model").and_then(Value::as_object_mut).ok_or("no model")?;
+    // CADIR v11 keeps the topology in `geometry`; the assembly structure stays in `model`.
+    let topo_section = if v.get("geometry").is_some_and(Value::is_object) { "geometry" } else { "model" };
+    if let Some(m) = v.get_mut("model").and_then(Value::as_object_mut) {
+        for arena in ["occurrences", "joints", "assembly_joints", "product_definitions"] {
+            if let Some(arr) = m.get_mut(arena).and_then(Value::as_array_mut) {
+                arr.clear();
+            }
+        }
+    }
+    let model = v.get_mut(topo_section).and_then(Value::as_object_mut).ok_or("no model")?;
     let ids = |arr: &Value| -> Vec<String> {
         arr.as_array().into_iter().flatten().filter_map(|x| x.get("id").and_then(Value::as_str).map(str::to_string)).collect()
     };
@@ -147,8 +156,10 @@ fn keep_bodies(ir: &cadmpeg_ir::CadIr, keep: &[usize]) -> Result<cadmpeg_ir::Cad
     let mut kept_vertices = HashSet::new();
     for e in edges.as_array().into_iter().flatten() {
         if s(e, "id").is_some_and(|i| kept_edges.contains(&i)) {
-            kept_vertices.extend(s(e, "start"));
-            kept_vertices.extend(s(e, "end"));
+            // v11 keeps an edge's vertices under `ends`
+            let ends = e.get("ends").unwrap_or(e);
+            kept_vertices.extend(s(ends, "start"));
+            kept_vertices.extend(s(ends, "end"));
         } else {
             drop.extend(s(e, "id"));
         }
@@ -171,13 +182,16 @@ fn keep_bodies(ir: &cadmpeg_ir::CadIr, keep: &[usize]) -> Result<cadmpeg_ir::Cad
         let t = x.to_string();
         drop.iter().any(|d| t.contains(&format!("\"{d}\"")))
     };
-    for (arena, val) in model.iter_mut() {
-        if let Some(arr) = val.as_array_mut() {
-            let topo = matches!(arena.as_str(), "bodies" | "regions" | "shells" | "faces" | "loops" | "coedges" | "edges" | "vertices");
-            arr.retain(|x| {
-                let own = x.get("id").and_then(Value::as_str).is_some_and(|i| drop.contains(i));
-                if topo { !own } else { !own && !refs_dropped(x) }
-            });
+    for section in ["model", "geometry"] {
+        let Some(sec) = v.get_mut(section).and_then(Value::as_object_mut) else { continue };
+        for (arena, val) in sec.iter_mut() {
+            if let Some(arr) = val.as_array_mut() {
+                let topo = matches!(arena.as_str(), "bodies" | "regions" | "shells" | "faces" | "loops" | "coedges" | "edges" | "vertices");
+                arr.retain(|x| {
+                    let own = x.get("id").and_then(Value::as_str).is_some_and(|i| drop.contains(i));
+                    if topo { !own } else { !own && !refs_dropped(x) }
+                });
+            }
         }
     }
     serde_json::from_value(v).map_err(|e| format!("filtered document: {e}"))
