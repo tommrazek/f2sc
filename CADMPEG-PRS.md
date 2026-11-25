@@ -468,12 +468,12 @@ I derived this contribution solely by analyzing CAD files I am legally entitled 
 
 The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5 and Claude Fable 5.2).
 
-# 25 Nov: PR 11 (draft, waiting for approval)
+# 25 Nov: PR 11, opened as #2260
 
 Branch `f3d/component-insert-binds-external-occurrence` in `~/cadmpeg`, one change on upstream
-`main` at `fd3cdb8c49`. Not pushed; it waits for your OK and your tick in the sign-off box.
+`main` at `fd3cdb8c49`, pushed to the fork and opened as cadmpeg/cadmpeg#2260 on 25 Nov.
 
-## PR 11: f3d: bind a Component Insert to the external occurrence a joint moved after the insertion
+## PR 11 (#2260, opened 25 Nov): f3d: bind a Component Insert to the external occurrence a joint moved after the insertion
 
 ### Summary
 
@@ -505,7 +505,7 @@ bound to the plate occurrence, the plate at the carrier pose and the screws at t
 
 ### Checklist
 
-- [ ] Signed off: I certify this PR under the Developer Certificate of Origin. See CONTRIBUTING.md.
+- [X] Signed off: I certify this PR under the Developer Certificate of Origin. See CONTRIBUTING.md.
 
 ### Provenance declaration
 

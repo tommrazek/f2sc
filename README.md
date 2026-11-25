@@ -133,7 +133,7 @@ It must print
 f3d2sc-decode cadmpeg fd3cdb8c49be954dd00451b9b77b1f977225a897
 ```
 
-The hash is the cadmpeg commit the decoder was built from (upstream `main` as of 25 Nov). One more fix, cadmpeg PR 11 ([CADMPEG-PRS.md](CADMPEG-PRS.md)), is waiting to be opened; until it is merged, a Component Insert that a joint moved after the insertion also shows as an unresolved extra occurrence (a note in the root's output, nothing placed for it). If it
+The hash is the cadmpeg commit the decoder was built from (upstream `main` as of 25 Nov). One more fix, cadmpeg PR 11 (#2260, [CADMPEG-PRS.md](CADMPEG-PRS.md)), is open; until it is merged, a Component Insert that a joint moved after the insertion also shows as an unresolved extra occurrence (a note in the root's output, nothing placed for it). If it
 prints another hash, the clone is on another commit; see [Troubleshooting](#6-troubleshooting).
 
 **Step 6. Tell the commands where SolidCraft is.** The examples below write `SOLIDCRAFT` for the
