@@ -11,3 +11,5 @@ __pycache__/
 /cadmpeg/
 !/cadmpeg-f3d2sc.bundle
 .DS_Store
+# your own designs that must stay out of git
+/private/

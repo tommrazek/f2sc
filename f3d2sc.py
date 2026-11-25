@@ -3690,10 +3690,13 @@ def check_decoder(decoder):
     (../cadmpeg): an older build decodes less (unresolved planes and placements), and the
     conversion silently loses it."""
     here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cadmpeg")
+    if not os.path.isfile(decoder):
+        sys.exit(f"f3d2sc: no decoder at {decoder}. Build it once (README, Set-up, steps 3-5):\n"
+                 "  (cd decoder && cargo build --release) && mkdir -p bin && cp decoder/target/release/f3d2sc-decode bin/")
     try:
         v = subprocess.run([decoder, "--version"], capture_output=True, text=True).stdout.split()
-    except OSError:
-        return  # decode() reports a missing decoder
+    except OSError as e:
+        sys.exit(f"f3d2sc: the decoder {decoder} does not run ({e}); rebuild it (README, Set-up)")
     built = v[2] if len(v) == 3 and v[1] == "cadmpeg" else None
     r = subprocess.run(["git", "-C", here, "rev-parse", "HEAD"], capture_output=True, text=True) \
         if os.path.isdir(os.path.join(here, ".git")) else None
