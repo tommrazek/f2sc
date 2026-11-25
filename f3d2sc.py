@@ -3356,6 +3356,12 @@ def screw_occurrences(ir, names, infer):
     added = {}
     if not infer.enabled("screw_occurrences_from_component_paths"):
         screws = []
+    # occurrences cadmpeg expanded and placed itself (one per Screw feature in newer files)
+    placed: dict = {}
+    for o in m.get("occurrences", []):
+        doc = (o.get("prototype") or {}).get("document", {}).get("path")
+        if doc and "-occurrence-" in (o.get("native_ref") or ""):
+            placed[doc] = placed.get(doc, 0) + 1
     for f in screws:
         sp = f.get("source_properties") or {}
         try:
@@ -3369,6 +3375,9 @@ def screw_occurrences(ir, names, infer):
         lib = screw_library_json(bulk, off) or {}
         path = by_name.get(lib.get("DNAME"))
         T = carriers.get(target)
+        if path is not None and not T and placed.get(path, 0) > 0:
+            placed[path] -= 1
+            continue  # cadmpeg gives this screw an occurrence of its own
         if path is None or not T or len(T) != 1:
             notes.append(f"{f['name']}: screw {lib.get('DNAME', '?')!r}: " +
                          ("no linked design of that name in the archive" if path is None else

@@ -97,7 +97,7 @@ upstream (see [CADMPEG-PRS.md](CADMPEG-PRS.md)), so plain cadmpeg is enough. Use
 converter was last tested with:
 
 ```bash
-git -C cadmpeg checkout --detach 61d47445e0
+git -C cadmpeg checkout --detach fd3cdb8c49
 ```
 
 The `-C cadmpeg` makes git act on the `cadmpeg` folder, so you stay in the parent folder. A newer
@@ -130,10 +130,10 @@ bin/f3d2sc-decode --version
 It must print
 
 ```
-f3d2sc-decode cadmpeg 61d47445e0927da063661bb9c3f4f80407995f66
+f3d2sc-decode cadmpeg fd3cdb8c49be954dd00451b9b77b1f977225a897
 ```
 
-The hash is the cadmpeg commit the decoder was built from (upstream `main` as of 25 Nov). If it
+The hash is the cadmpeg commit the decoder was built from (upstream `main` as of 25 Nov). One more fix, cadmpeg PR 11 ([CADMPEG-PRS.md](CADMPEG-PRS.md)), is waiting to be opened; until it is merged, a Component Insert that a joint moved after the insertion also shows as an unresolved extra occurrence (a note in the root's output, nothing placed for it). If it
 prints another hash, the clone is on another commit; see [Troubleshooting](#6-troubleshooting).
 
 **Step 6. Tell the commands where SolidCraft is.** The examples below write `SOLIDCRAFT` for the
@@ -375,7 +375,7 @@ It must end with `0 regression(s)` (a feature that resolved before and does not 
 | `fatal: '../f2sc/cadmpeg-f3d2sc.bundle' does not appear to be a git repository` | You ran the command from the wrong folder, or cadmpeg is cloned inside `f2sc`. If `f2sc/cadmpeg` exists, move it out: from inside `f2sc` run `mv cadmpeg ../cadmpeg`, then `cd ..` and repeat step 3. |
 | `error: failed to load manifest for dependency 'cadmpeg-codec-f3d'` ... `failed to read .../cadmpeg/crates/cadmpeg-codec-f3d/Cargo.toml` during the build | The decoder found no `../cadmpeg`: wrong layout (see 1.2). Fix the layout, then rebuild. |
 | `bin/f3d2sc-decode --version` prints `cadmpeg unknown` | `../cadmpeg` is not a git clone (e.g. a downloaded zip), so the build cannot record its commit. Clone it with git (step 2). |
-| `--version` prints a different hash | `../cadmpeg` is on another commit. `git -C ../cadmpeg rev-parse HEAD` should start with `61d47445e0`; check it out (step 3) and rebuild. |
+| `--version` prints a different hash | `../cadmpeg` is on another commit. `git -C ../cadmpeg rev-parse HEAD` should start with `fd3cdb8c49`; check it out (step 3) and rebuild. |
 | `f3d2sc: WARNING: ... predates the version stamp` or `... is built from cadmpeg X, but ../cadmpeg is at Y` | The decoder is out of date; rebuild (section 4). |
 | The build is killed, or `signal: 9, SIGKILL` | Out of memory: build with `CARGO_BUILD_JOBS=1`. |
 | `error: rustc ... is not supported` or `rust-toolchain` errors | cadmpeg pins its Rust version in `rust-toolchain.toml`; rustup installs it on the first build. Without rustup (a distribution's `cargo`), install rustup. |
@@ -475,7 +475,7 @@ See [3. Converting a design you cannot share](#converting-a-design-you-cannot-sh
 
 ## 8. Benchmark results
 
-SolidCraft 0.40.1 and 0.49.1, decoder built from upstream cadmpeg `61d47445e0` (CADIR v11),
+SolidCraft 0.40.1 and 0.49.1, decoder built from upstream cadmpeg `fd3cdb8c49` (CADIR v11) plus PR 11,
 25 Nov; both versions give the same results (0.49.1 with exact splines and without the threaded-cut
 workaround). Every design converts with no gaps. Imported = features brought in from Fusion's final shape instead of rebuilt.
 
@@ -485,6 +485,7 @@ workaround). Every design converts with no gaps. Imported = features brought in 
 | `film_scanner.f3d` | component 1 | 0 | 0 | 2 bodies (cadmpeg now reads the Combines' Keep Tools off), not judged (threaded holes); frame body 1 is 77,868 mm³ (Fusion: 77,137–78,755 mm³), frame body 4 is 64,813 mm³ (Fusion: 64,300–66,141 mm³) |
 | | component 2 | 4 | 0 | match |
 | `test_asy.f3z` | Side / Body / Bottom Panels | 0 / 0 / 1 | 0 | 18/18, 4/4, 2/2 match; the assembly builds to 28 bodies |
+| `f2sc_screws.f3z` | plate, M3 × 12 screw | 0 / 4 | 0 | 1/1, 1/1 match; the assembly builds to 4 bodies: the plate (moved by a joint after its insertion) at the origin and three screws, one per Screw feature, in its holes |
 | `dummies/threads.f3d` | 10 threads, one per Fusion setting | 3 (a turned box primitive and the 2 features on it) | 0 | 7/12 match, 4 not judged (modeled threads), 1 lacks a cosmetic thread with an offset |
 
 `benchmarks/dummies/` also holds the controlled designs `dr340-regions-*.f3d` and

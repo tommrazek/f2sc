@@ -44,6 +44,17 @@ topic branches (topic 5 and 6 each take their own half of it).
 | 9 | Chamfer flip byte | Byte 22 of a two-distance or distance-angle chamfer set is the flip state. With 0 the (first) distance lies on the face whose coedge runs with the edge, with 1 on the other face. The parser refused a flipped set; `flip_direction` is now decoded | `f3d/chamfer-set-flip` | DR-341 (narrowed to tangent chains and split faces) |
 | 10 | Current pose from a component path with a legacy target | An inserted part's current pose is stored in a component-path record. Older files name the part there by a legacy target reference, which cadmpeg did not read, so the occurrence kept an earlier matrix. Fixes the three M2 screws and the Spring of the chaser | `f3d/legacy-root-component-path-pose` | — |
 
+## PR 11 (25 Nov, draft): Component Insert moved by a joint
+
+Branch `f3d/component-insert-binds-external-occurrence` (`~/cadmpeg`, one commit on upstream
+`fd3cdb8c49`, not pushed): a 400-byte Component Insert scope binds to the attributed carrier its
+relation names even when the carrier's matrix differs (the occurrence moved after the
+insertion), and the carrier's matrix keeps precedence. CC0 test file
+`corpus/f3d/component_insert_moved_by_joint.f3z` (= `benchmarks/f2sc_screws.f3z`). cadmpeg's
+library tests (6364) pass, clippy is clean, preflight passes except the golden tests of the other
+codec crates, left to CI (they need a workspace build that does not fit this machine's free disk).
+Text in `CADMPEG-PRS.md`.
+
 ## Next cadmpeg topics (25 Nov, upstream `61d47445e0`)
 
 All ten earlier topics are merged. Two new ones, found on a private test assembly (ISSUES A1, A2), each now worked

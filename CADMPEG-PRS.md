@@ -467,3 +467,52 @@ I derived the format knowledge in this contribution only from sources allowed by
 I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
 
 The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5 and Claude Fable 5.2).
+
+# 25 Nov: PR 11 (draft, waiting for approval)
+
+Branch `f3d/component-insert-binds-external-occurrence` in `~/cadmpeg`, one change on upstream
+`main` at `fd3cdb8c49`. Not pushed; it waits for your OK and your tick in the sign-off box.
+
+## PR 11: f3d: bind a Component Insert to the external occurrence a joint moved after the insertion
+
+### Summary
+
+A 400-byte matrix Component Insert scope names its carrier through a 58-byte relation: the
+relation's first marked reference names the attributed legacy occurrence placement, its last the
+scope. The decoder bound the scope only when the carrier's matrix equals the scope matrix. When a
+joint (or a move) places the occurrence after the insertion, the two differ: the scope keeps the
+insertion frame and the carrier the current pose. The scope then stayed unbound and supplied an
+unresolved-prototype occurrence at the document root beside the external occurrence it inserts
+(`feature.component-insert-membership-assumed`, DR-491).
+
+The scope now binds to that carrier when the matrices differ, and the carrier's matrix keeps
+precedence over the scope matrix (the scope transform no longer supersedes the structured
+placement for such a carrier). Equal matrices bind as before; the other scope frames are
+unchanged.
+
+Evidence: a new CC0 file, `corpus/f3d/component_insert_moved_by_joint.f3z` (Assembly Design).
+A linked plate is inserted, dragged 5 mm (the scope matrix), then moved by a rigid joint so a
+corner sits on the origin (the carrier matrix, −1.0425 mm along x, because the plate's body
+starts at x = 1.0425 in its own design). Three DIN 912 M3 × 12 screws, each from its own Screw
+feature, seat on the plate's holes at (10, 10, 10), (50, 10, 10) and (30, 30, 10) only with the
+plate at the carrier pose. The new test checks four occurrences (no unresolved one), the insert
+bound to the plate occurrence, the plate at the carrier pose and the screws at their holes.
+`f3d.md` §3.1 states the rule; DR-491 is noted as settled in part.
+
+### Breaking change
+
+(none)
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the Developer Certificate of Origin. See CONTRIBUTING.md.
+
+### Provenance declaration
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me;
+none of them is or contains NDA-covered material. The format knowledge was derived from these
+files with AI assistance (Claude Opus 5.5 and Claude Fable 5.2).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
