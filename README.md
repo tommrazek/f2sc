@@ -6,7 +6,9 @@ holes, threads, fillets, chamfers, patterns, mirrors, combines. The result opens
 with an editable timeline, not as a dead imported shape. A Fusion assembly archive (`.f3z`)
 becomes one script per part plus a root script that places the parts.
 
-It is a personal, experimental project. It runs on Linux and macOS.
+It is an experimental project. It runs on Linux and macOS.
+
+**Disclaimer.** This is a personal project. It has no affiliation with Autodesk, Inc. or Fusion 360, and Autodesk does not endorse it. It is also not affiliated with SolidCraft, and the SolidCraft developers do not currently endorse it.
 
 ```
   design.f3d ──► bin/f3d2sc-decode ──► design IR (JSON) ──► f3d2sc.py ──► design.solidcraft.json ──► solidcraft-cli ──► design.sc
