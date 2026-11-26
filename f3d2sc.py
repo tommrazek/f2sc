@@ -3441,6 +3441,59 @@ def screw_occurrences(ir, names, infer):
     return notes
 
 
+def insert_occurrences(ir, names, infer):
+    """Component Inserts whose occurrence cadmpeg leaves unbound (no document) while the linked
+    designs' own occurrences sit unplaced at the origin (inference
+    insert_occurrences_from_display_poses). Pairs them in order, moves each linked occurrence to
+    the display pose of its insert record and drops the unbound one. Returns notes."""
+    if not infer.enabled("insert_occurrences_from_display_poses"):
+        return []
+    m = ir["model"]
+    nat = (ir.get("native") or {}).get("f3d") or {}
+    occs = {o["id"]: o for o in m.get("occurrences", [])}
+    I = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+    inserts = []
+    for f in sorted(m.get("features", []), key=lambda f: f.get("ordinal", 0)):
+        o = occs.get((f.get("definition") or {}).get("occurrence"))
+        if f.get("source_tag") == "Component Insert" and not f.get("suppressed") and o is not None \
+                and (o.get("prototype") or {}).get("scope") == "unresolved":
+            inserts.append((f, o))
+    linked = []
+    for o in m.get("occurrences", []):
+        r = re.fullmatch(r"f3d:xref:reference#(\d+)", o.get("native_ref") or "")
+        if r and (o.get("prototype") or {}).get("document", {}).get("path") and \
+                all(abs(a_ - b_) < 1e-12 for r1, r2 in zip(o.get("transform") or I, I) for a_, b_ in zip(r1, r2)):
+            linked.append((int(r.group(1)), o))
+    linked.sort(key=lambda x: x[0])
+    if not inserts or not linked:
+        return []
+    if len(inserts) != len(linked):
+        return [f"{len(inserts)} unbound Component Insert(s) and {len(linked)} unplaced linked occurrence(s): "
+                "not paired, the linked designs stay at the origin"]
+    poses = {}
+    for p in nat.get("display_poses", []):
+        path, T = p.get("path") or [], p.get("transform")
+        if len(path) == 2 and T and (p.get("binding") or {}).get("state") != "bound":
+            poses.setdefault(path[-1], []).append(T)
+    notes, drop = [], set()
+    for (f, o_ins), (_, o_lnk) in zip(inserts, linked):
+        try:
+            T = poses.get(int((f.get("source_properties") or {})["reference:0"]) - 1)
+        except (KeyError, ValueError):
+            T = None
+        doc = o_lnk["prototype"]["document"]["path"]
+        if not T or len(T) != 1:
+            notes.append(f"{f['name']}: no unique display pose for its record; {names.get(doc, doc)} stays at the origin")
+            continue
+        o_lnk["transform"] = [list(T[0][i][:4]) for i in range(3)]
+        drop.add(o_ins["id"])
+        notes.append(f"{f['name']}: places {names.get(doc, doc)} at its displayed pose "
+                     f"(translation {[round(T[0][i][3], 3) for i in range(3)]} mm)")
+        infer.use("insert_occurrences_from_display_poses", f["name"], f"{names.get(doc, doc)}")
+    m["occurrences"] = [o for o in m.get("occurrences", []) if o["id"] not in drop]
+    return notes
+
+
 def insert_poses(m, carriers, infer):
     """Component Insert occurrences whose current pose cadmpeg misses: the component-path record
     stored for the insert's occurrence record (inference insert_pose_from_component_path)."""
@@ -3681,6 +3734,7 @@ def convert_f3z(a, td):
     else:
         built += [v[0][:-3] for v in rgot.values()]
     notes += screw_occurrences(rir, names, a.infer.for_design("root"))
+    notes += insert_occurrences(rir, names, a.infer.for_design("root"))
     acmds, anotes, ok = assembly_commands(rir, {**sc_of, **{k: v for k, v in rgot.items() if k is not None}}, rname)
     cmds += acmds
     notes += anotes

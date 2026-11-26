@@ -283,6 +283,7 @@ in the report under `assumptions` where it fired, and can be switched off with
 | `revolve_axis_through_body_centre`, `revolve_sketch_from_records` | A Revolve the decoder leaves unresolved. |
 | `thread_face_by_radius`, `thread_start_at_axis_end`, `thread_record_by_strings` | Threads the decoder resolves only in part. |
 | `primitive_placed_by_body_centre` | Box and cylinder primitives, whose placement the decoder does not give. |
+| `insert_occurrences_from_display_poses` | Component Inserts cadmpeg leaves unbound while the linked designs' occurrences sit unplaced at the origin: paired in timeline order with those occurrences in the archive's reference order (only when the counts agree); each goes to the pose Fusion's display scene stores for its insert record, i.e. where its joints put it. |
 | `screw_occurrences_from_component_paths` | A Screw (fastener) feature cadmpeg gives no occurrence: one occurrence of the screw design its library data names, at the pose stored for it. |
 | `insert_pose_from_component_path` | A Component Insert's occurrence takes the current pose stored for it where cadmpeg's differs. |
 | `owner_from_body_evidence`, `split_piece_by_final_side`, `no_geometry_by_absence` | Which component a feature belongs to, which piece a Remove Body removes, features that make no geometry. |
@@ -473,7 +474,9 @@ counts as refused.
   Nested occurrences are flattened to their placement in the root. Joints, joint origins and
   component inserts make no geometry and are left out with a note; parts placed by joints or by
   Fusion's Screw (fastener) feature get their current pose from the file. Each Screw feature
-  gets its own placed screw (`screw_occurrences_from_component_paths`). Occurrences hidden in
+  gets its own placed screw (`screw_occurrences_from_component_paths`). A linked design brought in by a Component Insert that cadmpeg leaves unbound gets its
+  displayed pose (`insert_occurrences_from_display_poses`). **Joints are not rebuilt**: each part
+  is placed at its final pose, so it does not move with its joints in SolidCraft. Occurrences hidden in
   Fusion are hidden (`browser.visibility`), so the result shows what Fusion shows.
 - **Kept tool bodies** that Fusion hides are hidden at the end of the script.
 

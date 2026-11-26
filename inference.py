@@ -65,6 +65,10 @@ HEURISTICS = {
     "insert_pose_from_component_path":
         "a Component Insert's occurrence takes the current pose of the component-path record stored for the "
         "record before the insert's first reference (centimetres), where cadmpeg's pose differs from it",
+    "insert_occurrences_from_display_poses":
+        "Component Inserts cadmpeg leaves unbound, paired in timeline order with the linked designs' "
+        "unplaced occurrences in the archive's reference order (only when the counts agree); each gets "
+        "the pose Fusion's display scene stores for its insert record, i.e. after joints",
     "screw_occurrences_from_component_paths":
         "a Screw (fastener) feature cadmpeg gives no occurrence of its own: one occurrence of the linked "
         "screw design its library data names (by display name), at the component-path pose stored for "
