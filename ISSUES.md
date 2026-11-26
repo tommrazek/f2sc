@@ -20,6 +20,7 @@ up for a focused session in `CONTRIBUTIONS.md` (Open items).
 | F3 | Combine 4: SolidCraft deletes frame body 1 when it cuts it with the threaded shaft (SolidCraft issue 3). With the current decoder, frame 1 stayed uncut under `--check` and disappeared under `--build`. | SolidCraft (workaround in converter) | Worked around `6d9bcf3`: the cut uses the tool's two halves, split through the thread's axis. Body 1 is now 77,868 mm³ (Fusion lies between 77,137 and 78,755); body 4's 64,813 mm³ is unchanged. Still to report upstream (posts under your account). |
 | F4 | Kept tool bodies 5 and 6 visible on the Mac. | set-up (F1) | Hidden with the current decoder (Body 2, 3, 5, 6, as in Fusion). |
 | F5 | Component 2's Extrude 3: its sketch is not emitted, so its body is imported. | converter | Open (from 14 Nov). |
+| F6 | Since the STEP files are thinned (26 Nov, `step_thin.py`), the two threaded frame bodies of the final-shape reference import as closed solids, where they used to stay open and unjudged. Their volumes are then 86,315 and 81,750 mm³ against our 77,868 and 64,813 mm³, with boxes equal to 1e-8 mm. The reference is the one that is off: Fusion puts body 1 between 77,137 and 78,755 mm³ (F3), and cadmpeg writes the reference without 74 pcurves of its fitted thread surfaces. | cadmpeg (reference STEP) | A body whose box matches but whose volume differs from an incomplete reference is reported with the difference and not judged, as before. Open: why cadmpeg's fitted thread surfaces close into too much volume. |
 
 ## chaser_fluidic
 

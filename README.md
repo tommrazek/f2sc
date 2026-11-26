@@ -253,6 +253,7 @@ python3 f3d2sc.py DESIGN.f3d|DESIGN.f3z [-o OUT] [options]
 | `--step FILE` | Also write Fusion's final shape as STEP. |
 | `--solidcraft VERSION` | The SolidCraft version the scripts are for, e.g. `0.49.1`. Default: the version of the `--check`/`--build` CLI, else 0.40.1. From 0.49 the scripts use exact splines and skip the workarounds for SolidCraft issues fixed there (section 9); such scripts need 0.49 or newer. |
 | `--spline-tol MM` | How far a refitted dense spline may deviate (default 0.0001 mm). |
+| `--no-constraints` | Leave out sketch constraints, dimensions and user parameters (otherwise carried over with `--check` or `--build`, 7.4). |
 | `--no-refit` | Keep dense splines as they are (SolidCraft may refuse to extrude them). |
 | `--overrides FILE` | Explicit answers for what the file leaves open (see `inference.py`). |
 | `--no-infer NAME` | Switch off one named inference rule (repeatable). |
@@ -386,6 +387,7 @@ It must end with `0 regression(s)` (a feature that resolved before and does not 
 | The app says `missing field 'name'` | You opened a `.solidcraft.json` script; open the `.sc` (2.4). |
 | The root `.sc` of an assembly has 0 bodies, or parts are missing | A part failed to build: look for `build: ... failed` and the `<root>.without-failed.solidcraft.json` warning. A stale decoder also causes it. |
 | `solidcraft-cli run` cannot find a `.step` or `.sc` | Run scripts from their own folder: their paths are relative. |
+| The app says a part "couldn't be made into a solid and came in as surfaces", naming faces where "pcurves failed" | A body imported from STEP (a base feature, or a feature that was frozen) whose splines SolidCraft cannot read, usually a modelled thread's (section 9, issue 9). Convert again with the current f2sc: it thins those splines. If it persists, send the message: it names the faces. |
 
 ---
 
@@ -409,7 +411,9 @@ guesses and never a fix for one file.
 `f3d2sc.py` walks the Fusion timeline and writes SolidCraft commands, adapting to what SolidCraft
 can and cannot do (thread faces grown to the designation's size, dense splines refitted, sketch
 regions picked by points). `planar.py` computes sketch regions; `fusion_raw.py` joins the
-decoder's parameter tables by feature and role; `inference.py` holds the named rules.
+decoder's parameter tables by feature and role; `inference.py` holds the named rules;
+`constraints.py` carries sketch constraints, dimensions and user parameters over (7.4);
+`step_thin.py` thins the dense thread splines of the STEP files it imports (section 9, issue 9).
 
 **Bodies** are named after Fusion's per-component body numbers: `Body 3` in component 1,
 `C2 Body 3` in component 2. Fusion stores lengths in cm and angles in radians; scripts use mm and
@@ -436,7 +440,20 @@ counts as refused.
   SolidCraft 0.49 or newer splines are written exactly (`sketch.spline.control_knots`, degree
   1–9). For older versions only degree-3 or degree-5 clamped uniform splines are taken, and
   dense or non-uniform ones are refitted by least squares (default 0.1 µm; Fusion's involute gear
-  flanks go from 245 control points to 8). Constraints and dimensions are not carried over.
+  flanks go from 245 control points to 8).
+- **Sketch constraints, dimensions and user parameters** (`constraints.py`), with `--check` or
+  `--build` only, since each sketch is checked in SolidCraft. User parameters come first in the
+  script (`parameters.add`). Horizontal, vertical, coincident (also with a curve's end),
+  parallel, perpendicular, tangent, equal, concentric, collinear, midpoint, symmetric and fix
+  become `sketch.constraint.*`. Distance, horizontal and vertical distance, radius, diameter and
+  angle dimensions become `sketch.dimension`, valued by the Fusion expression when it uses only
+  user parameters and arithmetic (a screw's `adsk_nomdia * 0.51`), otherwise by the value.
+  SolidCraft gives the dimensions its own parameter names (`d1`, `d2`, …). Each sketch is first
+  run alone as drawn, then with its constraints. A constraint SolidCraft refuses, or one that
+  moves the sketch by more than 0.1 µm, is left out; the notes count them. Fusion's offset,
+  polygon and native dimension records are not mapped. `--no-constraints` leaves all of this
+  out. The idea, and keeping only constraints that leave the sketch in place, come from
+  [f3z-to-solidcraft](https://github.com/queball1999/f3z-to-solidcraft); no code is taken from it.
 - **Profiles** are picked by points inside each region, not by curve ids, because Fusion and
   SolidCraft split overlapping curves differently. Nested loops belong to the region around them.
 - **Extrude**: one side, two sides or symmetric; blind or through all; start offset; taper;
@@ -478,13 +495,14 @@ See [3. Converting a design you cannot share](#converting-a-design-you-cannot-sh
 ## 8. Benchmark results
 
 SolidCraft 0.40.1 and 0.49.1, decoder built from upstream cadmpeg `fd3cdb8c49` (CADIR v11) plus PR 11,
-25 Nov; both versions give the same results (0.49.1 with exact splines and without the threaded-cut
+25 Nov; rerun 26 Nov with sketch constraints and thinned STEP files, with the same results. Both
+versions give the same results (0.49.1 with exact splines and without the threaded-cut
 workaround). Every design converts with no gaps. Imported = features brought in from Fusion's final shape instead of rebuilt.
 
 | File | Design | Imported | Skipped | Final shape |
 |---|---|---|---|---|
 | `steel_test_articles.f3d` | | 0 | 0 | 2/2 match |
-| `film_scanner.f3d` | component 1 | 0 | 0 | 2 bodies (cadmpeg now reads the Combines' Keep Tools off), not judged (threaded holes); frame body 1 is 77,868 mm³ (Fusion: 77,137–78,755 mm³), frame body 4 is 64,813 mm³ (Fusion: 64,300–66,141 mm³) |
+| `film_scanner.f3d` | component 1 | 0 | 0 | 2 bodies (cadmpeg now reads the Combines' Keep Tools off), not judged (threaded holes; the reference now closes but lacks thread surfaces, ISSUES F6); frame body 1 is 77,868 mm³ (Fusion: 77,137–78,755 mm³), frame body 4 is 64,813 mm³ (Fusion: 64,300–66,141 mm³) |
 | | component 2 | 4 | 0 | match |
 | `test_asy.f3z` | Side / Body / Bottom Panels | 0 / 0 / 1 | 0 | 18/18, 4/4, 2/2 match; the assembly builds to 28 bodies |
 | `f2sc_screws.f3z` | plate, M3 × 12 screw | 0 / 4 | 0 | 1/1, 1/1 match; the assembly builds to 4 bodies: the plate (moved by a joint after its insertion) at the origin and three screws, one per Screw feature, in its holes |
@@ -528,6 +546,16 @@ the `--check`/`--build` CLI). Issues 5 and 6 come from a private design and were
    designation's size. The converter offsets the face first.
 8. **Scripts take clamped uniform splines only**; non-uniform ones are refitted. *0.49 adds
    `sketch.spline.control_knots` (any knots, degree 1–9); the converter writes splines exactly with it.*
+9. **A body with a modelled thread imports from STEP as open surfaces** (0.49.1; found 26 Nov on a
+   private design, reproduction not included). cadmpeg writes a helix as cubic Hermite segments and
+   doubles their number until the fit is far inside its tolerance: 1024 segments for a 14-turn
+   thread. SolidCraft refuses such an edge on a cylinder ("an edge of a face that winds round its
+   axis, whose curve has too many knot spans"), or, in another build, the helical flank ("a loop
+   that jumps across its spline surface's u range"), and leaves those faces out. This hits a
+   thread in a base feature or in any body the converter imports. The converter thins those
+   splines in every STEP it writes (`step_thin.py`): it merges neighbouring segments while the
+   result stays within 0.1 µm of cadmpeg's curve or surface. In the case found, 1024 segments
+   become 512 and the body imports as a closed solid. 0.40.1 cannot import it either way.
 
 ---
 

@@ -36,6 +36,8 @@ from fusion_raw import CM, Raw  # noqa: E402
 from inference import HEURISTICS, Inference  # noqa: E402
 import diagnose as diag  # noqa: E402
 import ir_compat  # noqa: E402
+from step_thin import thin_step  # noqa: E402
+import constraints  # noqa: E402
 
 EPS = 1e-6  # mm: sketch endpoints closer than this are one point
 CENTRE_TOL = 1e-3  # mm: body centre agreement in --check
@@ -106,6 +108,8 @@ class Converter:
                  refused=None, unvalidated=None):
         self.spline_tol = spline_tol
         self.sc_cli = None  # solidcraft-cli, for inferences that measure the final B-rep
+        self.constraints_on = True  # carry sketch constraints over (constraints.py; needs sc_cli)
+        self.sketch_probe = None
         self.sc_target = SC_BASELINE  # the SolidCraft version the script is written for
         self.script_dir = None
         self.refused = refused or {}  # timeline ordinal -> SolidCraft's error when it ran the feature
@@ -402,6 +406,7 @@ class Converter:
             o = proj
         name = self.unique(feature_name)
         self.sketch_names[sketch_ref] = name
+        sketch_start = len(self.cmds)
         self.emit("sketch.create", {"plane": {"origin": rnd(o), "x_dir": rnd(u), "y_dir": rnd(v)}, "name": name})
         canon: list[tuple[float, float]] = []
 
@@ -489,6 +494,12 @@ class Converter:
             else:
                 raise Gap(f"sketch entity kind {k!r}")
         self.curve_ids[sketch_ref] = ids
+        if self.sketch_probe is not None:
+            kept, note = constraints.carry(self, sketch_ref, self.cmds[sketch_start:], ids)
+            for c in kept:
+                self.emit(c["command"], c["params"])
+            if note:
+                self.notes.append(f"{feature_name}: {note}")
         self.emit("sketch.finish", {})
 
     def loop_segments(self, sketch_ref: str, loop) -> list[tuple]:
@@ -2382,6 +2393,18 @@ class Converter:
                     "split_body": self.feat_split, "primitive": self.feat_primitive, "block": self.feat_primitive,
                     "sphere": self.feat_sphere}
         self.stopped = False
+        if self.constraints_on and self.sc_cli:
+            head = constraints.parameter_commands(self.m)
+            self.sketch_probe = constraints.SketchProbe(self.sc_cli, head)
+            ok, k, err = self.sketch_probe.run([])
+            if ok is None and head:  # a parameter SolidCraft refuses: carry the values only
+                self.notes.append(f"user parameters left out: SolidCraft refused one ({err[:120]})")
+                head = []
+                self.sketch_probe = constraints.SketchProbe(self.sc_cli, head)
+            for c in head:
+                self.emit(c["command"], c["params"])
+            if head:
+                self.notes.append(f"{len(head)} user parameter(s) carried over")
         for f in self.feats:
             d = f.get("definition", {})
             kind = d.get("definition")
@@ -2977,6 +3000,8 @@ def decode(f3d: str, decoder: str, workdir: str, step: str | None):
     r = subprocess.run([decoder, f3d, ir_path] + ([step] if step else []), capture_output=True, text=True)
     if r.returncode != 0:
         raise DecodeError(r.stderr.strip())
+    if step:
+        thin_step(step)
     return load_ir(ir_path)
 
 
@@ -3113,6 +3138,7 @@ def convert_design(a, src, out, td, ir_path=None, f3d=None, step=None, pre=None,
         r = subprocess.run([a.decoder, f3d, os.path.join(td, "derive.ir.json"), path, str(k)], capture_output=True, text=True)
         if r.returncode != 0:
             raise Gap(f"writing the derived body's STEP failed: {r.stderr.strip()[:300]}")
+        thin_step(path)  # dense thread splines SolidCraft cannot import (step_thin.py)
         return os.path.basename(path)
 
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
@@ -3125,6 +3151,7 @@ def convert_design(a, src, out, td, ir_path=None, f3d=None, step=None, pre=None,
                          refused=refused, unvalidated=unvalidated)
         conv.offset_by_cut = by_cut
         conv.sc_cli, conv.script_dir = a.check or a.build, os.path.dirname(os.path.abspath(out))
+        conv.constraints_on = not getattr(a, "no_constraints", False)
         conv.sc_target = a.sc_target
         gaps = conv.run(a.until)
         problems = check(conv, a.check, td, os.path.dirname(os.path.abspath(out))) if a.check else []
@@ -3219,6 +3246,7 @@ def final_shape_check(conv, sc_cli, decoder, f3d, body_indices, out, td):
     if r.returncode != 0:
         res.update(status="reference not written", summary="reference STEP not written: " + r.stderr.strip()[:200])
         return res
+    thin_step(ref)
     incomplete = any("surface" in l_.lower() and ("not written" in l_ or "not represented" in l_ or "omitted" in l_)
                      for l_ in r.stderr.splitlines())
     script = os.path.join(td, "final-script.json")
@@ -3268,9 +3296,15 @@ def final_shape_check(conv, sc_cli, decoder, f3d, body_indices, out, td):
         db = max(abs(p_ - q_) for p_, q_ in zip(x["bbox"]["min"] + x["bbox"]["max"], y["bbox"]["min"] + y["bbox"]["max"]))
         good = abs(dv) < 1e-4 and db < 1e-3
         worst = max(worst, abs(dv))
-        res["bodies"].append({"body": x["name"], "volume": [round(x["volume_mm3"], 4), round(y["volume_mm3"], 4)],
-                              "rel_volume": float(f"{dv:.3e}"), "bbox_mm": float(f"{db:.3e}"),
-                              "faces": [x["faces"], y["faces"]], "match": good})
+        entry = {"body": x["name"], "volume": [round(x["volume_mm3"], 4), round(y["volume_mm3"], 4)],
+                 "rel_volume": float(f"{dv:.3e}"), "bbox_mm": float(f"{db:.3e}"),
+                 "faces": [x["faces"], y["faces"]], "match": good}
+        if not good and incomplete and db < 1e-3:
+            # the reference lacks procedural surfaces (cadmpeg's fitted threads): its volume is
+            # not to be trusted, the box is; report the difference, do not judge it
+            entry.update(match=None, note=f"volume differs by {dv:.1e} from a reference that lacks some "
+                                          "procedural surfaces; not judged")
+        res["bodies"].append(entry)
     nbad = sum(b["match"] is False for b in res["bodies"])
     nun = sum(b["match"] is None for b in res["bodies"])
     if len(a_) != len(b_):
@@ -3786,6 +3820,8 @@ def main():
     ap.add_argument("--source", help="with --ir: the .f3d it came from (derived bodies are written from it as STEP)")
     ap.add_argument("--until", metavar="FEATURE", help="stop before this Fusion feature (by its timeline name)")
     ap.add_argument("--spline-tol", type=float, default=SPLINE_TOL, help=f"mm a refitted dense spline may deviate (default {SPLINE_TOL})")
+    ap.add_argument("--no-constraints", action="store_true",
+                    help="leave out sketch constraints, dimensions and user parameters (carried over with --check or --build)")
     ap.add_argument("--no-refit", action="store_true", help="keep dense splines as they are (SolidCraft may refuse to extrude them)")
     ap.add_argument("--diagnose", metavar="REPORT", help="write a redacted report (no geometry, names or values) to share")
     ap.add_argument("--solidcraft", metavar="VERSION",
