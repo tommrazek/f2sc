@@ -253,6 +253,7 @@ python3 f3d2sc.py DESIGN.f3d|DESIGN.f3z [-o OUT] [options]
 | `--step FILE` | Also write Fusion's final shape as STEP. |
 | `--solidcraft VERSION` | The SolidCraft version the scripts are for, e.g. `0.49.1`. Default: the version of the `--check`/`--build` CLI, else 0.40.1. From 0.49 the scripts use exact splines and skip the workarounds for SolidCraft issues fixed there (section 9); such scripts need 0.49 or newer. |
 | `--spline-tol MM` | How far a refitted dense spline may deviate (default 0.0001 mm). |
+| `--no-joints` | Leave out assembly joints (otherwise made with `--build`, 7.4). |
 | `--no-constraints` | Leave out sketch constraints, dimensions and user parameters (otherwise carried over with `--check` or `--build`, 7.4). |
 | `--no-refit` | Keep dense splines as they are (SolidCraft may refuse to extrude them). |
 | `--overrides FILE` | Explicit answers for what the file leaves open (see `inference.py`). |
@@ -413,7 +414,7 @@ guesses and never a fix for one file.
 can and cannot do (thread faces grown to the designation's size, dense splines refitted, sketch
 regions picked by points). `planar.py` computes sketch regions; `fusion_raw.py` joins the
 decoder's parameter tables by feature and role; `inference.py` holds the named rules;
-`constraints.py` carries sketch constraints, dimensions and user parameters over (7.4);
+`joints.py` rebuilds assembly joints (7.4); `constraints.py` carries sketch constraints, dimensions and user parameters over (7.4);
 `step_thin.py` thins the dense thread splines of the STEP files it imports (section 9, issue 9).
 
 **Bodies** are named after Fusion's per-component body numbers: `Body 3` in component 1,
@@ -475,8 +476,14 @@ counts as refused.
   component inserts make no geometry and are left out with a note; parts placed by joints or by
   Fusion's Screw (fastener) feature get their current pose from the file. Each Screw feature
   gets its own placed screw (`screw_occurrences_from_component_paths`). A linked design brought in by a Component Insert that cadmpeg leaves unbound gets its
-  displayed pose (`insert_occurrences_from_display_poses`). **Joints are not rebuilt**: each part
-  is placed at its final pose, so it does not move with its joints in SolidCraft. Occurrences hidden in
+  displayed pose (`insert_occurrences_from_display_poses`). **Joints** (`joints.py`, with
+  `--build`): fixed, slider, revolute, cylindrical, ball, planar and pin-slot joints are made where
+  the parts stand (`joint.as_built`) at the second connector's frame. A slider's or cylindrical
+  joint's linear limits are carried over, shifted by its current value; angular limits are not.
+  In each group of joined parts the part most often joined to stays grounded, the others move
+  with their joints, and parts in no joint stay grounded. A joint SolidCraft refuses or finds in
+  conflict is left out when the assembly is built. Relation joints (distance, angle, parallel, …)
+  are not mapped. `--no-joints` leaves joints out. Occurrences hidden in
   Fusion are hidden (`browser.visibility`), so the result shows what Fusion shows.
 - **Kept tool bodies** that Fusion hides are hidden at the end of the script.
 

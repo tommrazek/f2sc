@@ -38,6 +38,7 @@ import diagnose as diag  # noqa: E402
 import ir_compat  # noqa: E402
 from step_thin import thin_step  # noqa: E402
 import constraints  # noqa: E402
+import joints  # noqa: E402
 
 EPS = 1e-6  # mm: sketch endpoints closer than this are one point
 CENTRE_TOL = 1e-3  # mm: body centre agreement in --check
@@ -3487,6 +3488,7 @@ def insert_occurrences(ir, names, infer):
             continue
         o_lnk["transform"] = [list(T[0][i][:4]) for i in range(3)]
         drop.add(o_ins["id"])
+        m.setdefault("_insert_links", {})[f["id"]] = o_lnk["id"]
         notes.append(f"{f['name']}: places {names.get(doc, doc)} at its displayed pose "
                      f"(translation {[round(T[0][i][3], 3) for i in range(3)]} mm)")
         infer.use("insert_occurrences_from_display_poses", f["name"], f"{names.get(doc, doc)}")
@@ -3522,7 +3524,7 @@ def insert_poses(m, carriers, infer):
     return notes
 
 
-def assembly_commands(ir, sc_of, label):
+def assembly_commands(ir, sc_of, label, with_joints=False):
     """Commands placing each occurrence of a design: its component's (or linked design's)
     script built as a .sc, inserted and moved to where Fusion has it (nested occurrences are
     flattened to their placement in the design). sc_of maps ("local", component id) or
@@ -3554,6 +3556,7 @@ def assembly_commands(ir, sc_of, label):
             and hidden(occs[par["occurrence"]], depth + 1)
 
     cmds, notes, ok, used, hide = [], [], True, {}, []
+    sc_name = {}
     for o in sorted(occs.values(), key=lambda o: (o.get("ordinal", 0), depth(o))):
         pr = o.get("prototype", {})
         key = ("local", pr.get("definition")) if pr.get("scope") == "local" else ("doc", pr.get("document", {}).get("path"))
@@ -3571,12 +3574,16 @@ def assembly_commands(ir, sc_of, label):
         used[disp] = used.get(disp, 0) + 1
         name = disp if used[disp] == 1 else f"{disp} ({used[disp]})"
         cmds.append({"command": "component.insert_design", "params": {"path": path, "name": name}})
+        sc_name[o["id"]] = f"{name}:1"
         if hidden(o):
             hide.append(name)
         T = world(o)
         if not is_identity(T):
             cmds.append({"command": "occurrence.move", "params": {"occurrence": f"{name}:1", "to_matrix": [rnd(r) for r in T],
                                                                   "move_grounded": True}})
+    if with_joints and m.get("assembly_joints"):
+        jc, _ = joints.joint_commands(m, occs, sc_name, world, notes)
+        cmds += jc
     if hide:
         cmds.append({"command": "browser.visibility", "params": {"visible": False, "features": hide}})
         notes.append(f"{len(hide)} occurrence(s) hidden in Fusion are hidden: {', '.join(hide)}")
@@ -3710,7 +3717,7 @@ def convert_f3z(a, td):
             built.append(got[None][0][:-3])
         elif got:
             # a linked design with components of its own: its own assembly script, built as a .sc
-            sub_cmds, sub_notes, ok = assembly_commands(ir_, got, nm)
+            sub_cmds, sub_notes, ok = assembly_commands(ir_, got, nm, with_joints=bool(a.build) and not getattr(a, "no_joints", False))
             write_script(os.path.join(outdir, nm + ".solidcraft.json"), sub_cmds)
             sc_of[("doc", f)] = (nm + ".sc", names.get(f, nm))
             built += [v[0][:-3] for v in got.values()] + [nm]
@@ -3735,7 +3742,8 @@ def convert_f3z(a, td):
         built += [v[0][:-3] for v in rgot.values()]
     notes += screw_occurrences(rir, names, a.infer.for_design("root"))
     notes += insert_occurrences(rir, names, a.infer.for_design("root"))
-    acmds, anotes, ok = assembly_commands(rir, {**sc_of, **{k: v for k, v in rgot.items() if k is not None}}, rname)
+    acmds, anotes, ok = assembly_commands(rir, {**sc_of, **{k: v for k, v in rgot.items() if k is not None}}, rname,
+                                          with_joints=bool(a.build) and not getattr(a, "no_joints", False))
     cmds += acmds
     notes += anotes
     failed |= not ok
@@ -3812,7 +3820,7 @@ def convert_components_if_any(a, out, td):
     base = re.sub(r"\.solidcraft\.json$|\.json$", "", os.path.basename(out))
     out = os.path.join(outdir, base + ".solidcraft.json")  # the name build() runs
     got, reports, failed, ir_ = convert_file(a, a.f3d, outdir, base, td, step=a.step)
-    cmds, notes, ok = assembly_commands(ir_, got, base)
+    cmds, notes, ok = assembly_commands(ir_, got, base, with_joints=bool(a.build) and not getattr(a, "no_joints", False))
     write_script(out, cmds)
     for n in notes:
         print(f"note: {base}: {n}", file=sys.stderr)
@@ -3825,6 +3833,51 @@ def convert_components_if_any(a, out, td):
     if a.build:
         build(a.build, outdir, [v[0][:-3] for v in got.values()], base)
     sys.exit(2 if failed or not ok else 0)
+
+
+def drop_refused_joints(sc_cli, outdir, script, root, tries=40):
+    """The root script without the joint steps SolidCraft refuses or reports conflicts for
+    (written as <root>.joints-checked.solidcraft.json when any is dropped); `script` as it is
+    when it has no joints or fails for another reason."""
+    with open(os.path.join(outdir, script)) as fh:
+        cmds = json.load(fh)["commands"]
+    if not any(c["command"] == "joint.as_built" for c in cmds):
+        return script
+    dropped = []
+    for _ in range(tries):
+        with tempfile.TemporaryDirectory() as td:
+            sp, out = os.path.join(td, "root.json"), os.path.join(td, "out.json")
+            write_script(sp, cmds)
+            subprocess.run([sc_cli, "run", sp, "--results", "--json-out", out, "--quiet"],
+                           cwd=outdir, capture_output=True, text=True)
+            try:
+                with open(out) as fh:
+                    r = json.load(fh)
+            except (OSError, ValueError):
+                return script
+        bad = None
+        if isinstance(r, dict) and "error" in r:
+            k = (r["error"].get("step") or 0) - 1
+            if 0 <= k < len(cmds) and cmds[k]["command"] in ("joint.as_built", "occurrence.ground"):
+                bad = k
+            else:
+                return script  # fails for another reason: build() reports it
+        else:
+            for k, (c, res) in enumerate(zip(cmds, r)):
+                if c["command"] == "joint.as_built" and isinstance(res, dict) and (res.get("conflicts") or res.get("errors")):
+                    bad = k
+                    break
+        if bad is None:
+            break
+        dropped.append(f"{cmds[bad]['command']} {cmds[bad]['params'].get('name') or cmds[bad]['params'].get('occurrence')}")
+        del cmds[bad]
+    if not dropped:
+        return script
+    print(f"build: {root}: left out {len(dropped)} joint step(s) SolidCraft refused or found in conflict: "
+          f"{', '.join(dropped)}", file=sys.stderr)
+    checked = root + ".joints-checked.solidcraft.json"
+    write_script(os.path.join(outdir, checked), cmds)
+    return checked
 
 
 def build(sc_cli, outdir, parts, root):
@@ -3847,6 +3900,7 @@ def build(sc_cli, outdir, parts, root):
         script = root + ".without-failed.solidcraft.json"
         write_script(os.path.join(outdir, script), cmds)
         print(f"build: {root}: WARNING: built without {', '.join(sorted(gone))} (their .sc failed to build)", file=sys.stderr)
+    script = drop_refused_joints(sc_cli, outdir, script, root)
     r = subprocess.run([sc_cli, "run", script, "--save", root + ".sc", "--quiet"], cwd=outdir,
                        capture_output=True, text=True)
     if r.returncode != 0:
@@ -3874,6 +3928,8 @@ def main():
     ap.add_argument("--source", help="with --ir: the .f3d it came from (derived bodies are written from it as STEP)")
     ap.add_argument("--until", metavar="FEATURE", help="stop before this Fusion feature (by its timeline name)")
     ap.add_argument("--spline-tol", type=float, default=SPLINE_TOL, help=f"mm a refitted dense spline may deviate (default {SPLINE_TOL})")
+    ap.add_argument("--no-joints", action="store_true",
+                    help="leave out assembly joints (made as built with --build)")
     ap.add_argument("--no-constraints", action="store_true",
                     help="leave out sketch constraints, dimensions and user parameters (carried over with --check or --build)")
     ap.add_argument("--no-refit", action="store_true", help="keep dense splines as they are (SolidCraft may refuse to extrude them)")
