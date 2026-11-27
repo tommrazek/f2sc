@@ -7,7 +7,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] PR 12 `f3d/two-sided-extrude-same-side`: opposite-sign two-sided Extrudes. Settled by T1 (all four sign pairs) and 9 solid Extrudes in 4 files with no exception. Drafted and thin forms stay native (DR-1080).
 - [x] PR 13 `f3d/assemble-tail-link-run`: Assemble scopes with associated tail references. Every joint in every benchmark now decodes; decode diff changes only the 5 joint designs. Joint motion of v6 joint records is still open (DR-1081, T8).
 - [x] PR 11 (#2260, open) follow-up: the reviewer's blocking point (validator) and three non-blocking points fixed; rebased (it conflicted).
-- [ ] Clippy, full tests and preflight on all three after the rebase (running)
+- [x] Clippy (clean), full tests (6585–6588 pass) and preflight (no FAIL) on all three after the rebase
 - [ ] Your sign-off on PR 12 and PR 13, and your go-ahead to push all three (2260 needs a force-push after the rebase)
 
 ## Converter (f2sc)
