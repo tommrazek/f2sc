@@ -4,7 +4,8 @@ Updated as items close. Longer-term plan: `SIMPLIFY.md`; Fusion saves wanted: `F
 
 ## Two-sided extrude PR (cadmpeg)
 - [x] Fix on local branch `f3d/two-sided-extrude-same-side` (−/+ signs), tests, spec, DR-1064
-- [ ] Build T1–T3 in Fusion (sign combinations, thin, taper); you export them. T1 and the two thin cases are done, in `f2sc-test-two-sided-signs`; T3 (taper) is next
+- [x] Build T1–T3 in Fusion: all in `f2sc-test-two-sided-signs` (Default Project)
+- [ ] You export `f2sc-test-two-sided-signs` into `benchmarks/`
 - [ ] Decode T1–T3, settle DR-1064, extend the fix to every sign combination it settles
 - [ ] cadmpeg clippy and full test suite on the branch
 - [ ] Draft PR text (provenance below) for your sign-off; push only after your OK
