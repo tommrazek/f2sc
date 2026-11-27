@@ -942,6 +942,10 @@ class Converter:
         non-editable) and go on with the timeline. Returns whether it could."""
         ns = self.ns_of_feature.get(f["id"])
         slots = None
+        if not f.get("_A") and not self.new_slots.get(f["id"]) and f.get("outputs"):
+            done = self.freeze_outputs(f, reason)
+            if done is not None:
+                return done
         if (ns is None or not f.get("_A")) and len(self.ns) == 1:
             # No body data of its own (a pattern whose seeds the decoder does not give): the
             # bodies the next feature with body data finds already there are the ones it can
@@ -1019,6 +1023,47 @@ class Converter:
         self.frozen.append(f["name"])
         self.infer.use("freeze_from_final_brep", f["name"], f"not converted ({reason}); {len(slots)} body(ies) imported"
                         + (f" with {len(tail)} later feature(s)" if tail else ""))
+        return True
+
+    def freeze_outputs(self, f, reason):
+        """`freeze` for a feature with no body-ledger data of its own but with the final bodies
+        it makes named (cadmpeg's `outputs`): a surface feature such as a Patch, whose sheet
+        bodies the ledger does not track. Those bodies come in from the final B-rep, surface
+        bodies as surfaces. None when this does not apply (an output that is no final body, or
+        one a later feature also names, i.e. changes)."""
+        if not self.derive_step or not self.infer.enabled("freeze_from_final_brep"):
+            return None
+        idx = {b["id"]: i for i, b in enumerate(self.m.get("bodies", []))}
+        outs = list(f["outputs"])
+        if any(o not in idx for o in outs):
+            return None
+        later = {o for g in self.feats if g.get("ordinal", 0) > f.get("ordinal", 0) for o in g.get("outputs") or []}
+        if later & set(outs):
+            return None
+        mark, kinds = len(self.cmds), []
+        try:
+            for k, o in enumerate(outs, 1):
+                i = idx[o]
+                sheet = self.m["bodies"][i].get("kind") == "sheet"
+                label = f"{f['name']} {'surface' if sheet else 'body'} {k}"
+                path = self.derive_step(i, label)
+                if not sheet and self.sc_cli and step_volume(self.sc_cli, path, self.script_dir) is None:
+                    raise Gap(f"the final body {o} does not import as a closed solid")
+                self.emit("file.insert_step", {"path": path, "name": self.unique(f"{f['name']} (imported)"), "names": "solid"})
+                label = self.unique(label)
+                self.emit("body.rename", {"body": "cadmpeg_model", "name": label})
+                self.bodies.add(label)
+                if self.m["bodies"][i].get("visible") is False:
+                    self.emit("browser.visibility", {"items": [label], "visible": False})
+                kinds.append("surface" if sheet else "solid")
+        except Gap:
+            del self.cmds[mark:]
+            del self.cmd_owner[mark:]
+            return False
+        self.notes.append(f"{f['name']}: not converted ({reason}); the {len(outs)} body(ies) it makes "
+                          f"({', '.join(kinds)}) are imported from the f3d's final B-rep, non-editable")
+        self.frozen.append(f["name"])
+        self.infer.use("freeze_from_final_brep", f["name"], f"not converted ({reason}); {len(outs)} output body(ies) imported")
         return True
 
     def import_preexisting(self, f):
@@ -1128,9 +1173,18 @@ class Converter:
             sref = sp["historical_face_sketch"]
             p["sketch"] = self.sketch_names.get(sref) or fail("sketch not emitted")
             p["profiles"] = self.profile_picks(sref, [int(x) for x in sp["historical_face_profiles"].split(",")])
+            # The faces lie `historical_face_offset` along that sketch's normal; cadmpeg's own
+            # start and extent (drafts, two sides) are measured from the faces' plane.
             d = dict(d)
-            d["start"] = {"kind": "offset_profile_plane", "offset": float(sp["historical_face_offset"])}
-            if sp.get("extrude_to_distance"):
+            st = d.get("start") or {}
+            base = st.get("offset", 0.0) if st.get("kind") == "offset_profile_plane" else 0.0
+            if st.get("kind") not in (None, "profile_plane", "offset_profile_plane"):
+                raise Gap(f"extrude from faces with start {st.get('kind')!r}")
+            d["start"] = {"kind": "offset_profile_plane", "offset": float(sp["historical_face_offset"]) + base}
+            ext_ = d.get("extent") or {}
+            blind = all(s_.get("termination", {}).get("kind") in ("blind", "through_all")
+                        for s_ in ([ext_["side"]] if "side" in ext_ else [ext_.get("first", {}), ext_.get("second", {})]))
+            if sp.get("extrude_to_distance") and not blind:
                 d["extent"] = {"kind": "one_sided", "side": {"termination": {"kind": "blind", "length": float(sp["extrude_to_distance"])}}}
         else:
             raise Gap(f"extrude profile from {prof['kind']}")
@@ -1154,7 +1208,9 @@ class Converter:
                 return "through_all", 0.0
             if t["kind"] != "blind":
                 raise Gap(f"extrude termination {t['kind']!r}")
-            return t["length"], s.get("taper") or 0.0
+            # CADIR v11 names a side's draft `draft` (outward positive, as SolidCraft's taper);
+            # `taper` is this converter's own name for one read from the raw parameters
+            return t["length"], s.get("taper") or s.get("draft") or 0.0
 
         ext = d["extent"]
         second = None
@@ -1193,9 +1249,19 @@ class Converter:
         p["name"] = name
         self.extrude_params[f["id"]] = (dict(p), second is not None, self.extrude_boxes(p, d))
         self.extrude_loops[f["id"]] = (p.get("profiles", []), self.last_pick_loops or [])
+        rest = None
+        if op == "new" and len(self.new_slots.get(f["id"], [])) == 1 and len(p.get("profiles") or []) > 1:
+            # Fusion makes one body of the regions (they share faces); SolidCraft makes one
+            # per region: the first region makes the body, the others are joined into it.
+            rest = dict(p, profiles=p["profiles"][1:], operation="join", touching="one_body")
+            rest.pop("body_name", None)
+            p["profiles"] = p["profiles"][:1]
         self.emit_body_op(f, "solid.extrude", p, op)
         if op == "new":
             new = self.new_slots.get(f["id"], [])
+            if rest:
+                rest.update(targets=[ns.name(new[0])], name=self.unique(f["name"] + " regions"))
+                self.emit("solid.extrude", rest)
             if second:
                 second.update(operation="join", targets=[ns.name(new[0])], name=self.unique(f["name"] + " side 2"))
                 second.pop("body_name", None)

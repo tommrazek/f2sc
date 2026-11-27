@@ -58,6 +58,24 @@ Screw features and joints, converted with the decoder built from upstream cadmpe
 | A9 | Linked designs brought in by a Component Insert and then held by joints can come out at the origin, unturned: cadmpeg leaves the insert unbound and the linked occurrence at the identity, and the file stores their pose only in its display scene. | cadmpeg (converter rule) | **Worked around** by `insert_occurrences_from_display_poses`. For cadmpeg: bind such an insert to its linked occurrence. |
 | A10 | Joints are decoded by cadmpeg but not rebuilt: parts are placed at their final poses and do not move with their joints in SolidCraft. | converter | **Done 26 Nov** (`joints.py`): made as built, with linear limits; checked by driving sliders in SolidCraft. Angular limits and relation joints are not mapped yet. |
 
+## fdi_mount (public benchmark, 27 Nov)
+
+`benchmarks/fdi_mount.f3d`: one component, four bodies brought in by Derive features, then
+extrudes, thin extrudes, four Surface Patches, holes and a Combine. 27 final bodies, 11 of them
+surface bodies. Before 27 Nov, conversion stopped at SurfacePatch 3 and wrote nothing.
+
+| # | Issue | Where | Status |
+|---|---|---|---|
+| D1 | SurfacePatch 3 stopped the conversion. A Surface Patch makes sheet bodies, which cadmpeg's body ledger does not track, so the import fallback found no bodies of its own. It then guessed from the next solid feature, which worked by chance for Patches 1 and 2. cadmpeg names each patch's final bodies in `outputs`. | converter | **Fixed:** a feature with no ledger data imports exactly its `outputs` from the final B-rep, surface bodies as surfaces. The whole timeline now converts. |
+| D2 | A two-sided extrude whose side distances have opposite signs (Extrude 1: −55.75 / +6; Extrude 19: −55 / +60) came out 6 mm (and 115 mm) off. Fusion stores each side signed and makes the solid between the two ends, at `along` and `−against` along the profile normal. Confirmed by the final bodies: Extrude 1 spans z −55.75…−6, Extrude 19 z −115.75…−110.75. Also checked on film_scanner Extrude 1 and fdi Extrude 14 (both positive). cadmpeg took both lengths as magnitudes. | cadmpeg | **Fixed on branch** `f3d/two-sided-extrude-same-side` (not pushed): opposite signs become one side from an offset profile plane. A thin extrude with opposite signs (Extrude 8: +50 / −2) does not fit the rule (Fusion's centre is 1 mm off it), so cadmpeg keeps it native. A controlled save is needed for the (+, −) case and for thin walls before the PR. |
+| D3 | Thin extrudes (Extrude 8) are projected by cadmpeg as solid extrudes, with the wall thickness reported as a loss; the converter does not map them. SolidCraft has `solid.extrude` with `thin`. | cadmpeg (decode the wall), then converter | Open. |
+| D4 | Surface Patch boundaries stay native in cadmpeg, so a patch can only be imported. SolidCraft has `surface.patch` with an edge loop. | cadmpeg | Open (PR topic: decode the patch boundary as an edge selection). |
+| D5 | Extrude 19 extrudes six faces: Body 6's bottom face (a plate with holes) and the five SurfacePatch 3 surfaces that fill its holes, into one solid plate. The converter maps the faces onto Sketch 15's regions (`historical_face_profiles`); that mapping takes the nine hole discs, not the plate (883 mm³ instead of a 103 × 104 × 5 mm plate). Its height is right since D2 and the face path keep cadmpeg's own extent (27 Nov). | converter (face profiles) | Open: extrude the faces themselves rather than a sketch region. |
+| D6 | Extrude 20 makes four bodies. Their centres are right, but SolidCraft numbers them in a different order from Fusion, so the names are permuted and the per-feature check fails. | converter | Open (name new bodies by centre). |
+| D8 | A New Body extrude of several regions that share faces is one body in Fusion, but SolidCraft made one body per region (fdi Extrude 19: nine bodies for one slot). | converter | **Fixed:** when Fusion records one new body, the first region makes it and the others are joined into it. |
+| D9 | The face-profile path replaced cadmpeg's extent with its own one-sided `extrude_to_distance`, dropping drafts and two-sided extents. | converter | **Fixed:** cadmpeg's start and extent are kept, measured from the faces' plane. |
+| D7 | Every side draft cadmpeg decodes (CADIR `draft`) was dropped: the converter read `taper`. Found on `f2sc-test-face-extrude` (10° taper lost, 2.6 % volume). | converter | **Fixed.** |
+
 ## SolidCraft issues to report upstream
 
 Issues 3, 5 and 6 above (reproductions in `solidcraft-issues/`) and issue 1 (dense spline

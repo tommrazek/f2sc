@@ -88,8 +88,8 @@ fn run() -> Result<(), String> {
             None => r.ir().clone(),
         };
         let plan = StepCodec::default()
-            .plan(EncodeInput::new(&ir, None), TargetRequest::Explicit("ap214"))
-            .or_else(|_| StepCodec::default().plan(EncodeInput::new(&ir, None), TargetRequest::Inherit))
+            .plan(EncodeInput::new(&ir, None).with_target(TargetRequest::Explicit("ap214")))
+            .or_else(|_| StepCodec::default().plan(EncodeInput::new(&ir, None).with_target(TargetRequest::Inherit)))
             .map_err(|e| format!("STEP plan: {e}"))?;
         let mut out = std::fs::File::create(step).map_err(|e| e.to_string())?;
         let rep = plan.write_to(&mut out).map_err(|e| format!("STEP write: {e}"))?;
