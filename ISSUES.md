@@ -74,6 +74,7 @@ surface bodies. Before 27 Nov, conversion stopped at SurfacePatch 3 and wrote no
 | D6 | Extrude 20 makes four bodies. Their centres are right, but SolidCraft numbers them in a different order from Fusion, so the names are permuted and the per-feature check fails. | converter | Open (name new bodies by centre). |
 | D8 | A New Body extrude of several regions that share faces is one body in Fusion, but SolidCraft made one body per region (fdi Extrude 19: nine bodies for one slot). | converter | **Fixed:** when Fusion records one new body, the first region makes it and the others are joined into it. |
 | D9 | The face-profile path replaced cadmpeg's extent with its own one-sided `extrude_to_distance`, dropping drafts and two-sided extents. | converter | **Fixed:** cadmpeg's start and extent are kept, measured from the faces' plane. |
+| D10 | No joint is decoded in any design saved this week (revolute-limits, insert-joint, both visibility files): cadmpeg reads the `Assemble` scope (type `8DFDD543`, v5), but the joint record it names (type `7F5A0426`) is version 6, and cadmpeg admits versions 3-5 only. The joint's parameters (revolute-limits: offsets 0, limits -30 and +60 deg) stay unbound ("owner binding(s) have no recognized feature scope"). | cadmpeg | Open: PR topic, joint record version 6. The test files are the evidence. |
 | D7 | Every side draft cadmpeg decodes (CADIR `draft`) was dropped: the converter read `taper`. Found on `f2sc-test-face-extrude` (10° taper lost, 2.6 % volume). | converter | **Fixed.** |
 
 ## SolidCraft issues to report upstream

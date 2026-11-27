@@ -20,7 +20,7 @@ Updated as items close. Longer-term plan: `SIMPLIFY.md`; Fusion saves wanted: `F
 - [ ] revolve-stale: region still chosen by final volume
 - [ ] primitives: turned box imported; cylinder placed by body centre
 - [ ] split: split by faces imported
-- [ ] revolute-limits: component 2 sketch not emitted; angle limits
+- [ ] revolute-limits: component 2 sketch not emitted (open); joints not decoded at all: joint record v6 not admitted by cadmpeg (ISSUES D10, new PR topic)
 - [ ] M3 screw (visibility files): extrude whose profile is a body face
 - [x] visibility: cadmpeg marks nothing hidden in either save. PR topic; the two saves are the test pair
 
