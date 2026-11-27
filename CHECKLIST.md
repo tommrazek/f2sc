@@ -13,7 +13,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 ## Converter (f2sc)
 - [x] Surface Patch outputs, decoded drafts, face-extrude extent, joined regions (committed fe53ab3)
 - [x] Turned box primitives built from cadmpeg's placement (no inference); primitives case matches
-- [ ] Commit the turned-box change after the benchmark run
+- [x] Turned-box change committed (3f6b02c)
 - [ ] fdi_mount Extrude 19: extrude the faces, not sketch regions (ISSUES D5)
 - [ ] fdi_mount Extrude 20: name new bodies by centre (ISSUES D6)
 - [ ] A component's feature using another component's sketch (revolute-limits component 2; today imported, shape matches)
