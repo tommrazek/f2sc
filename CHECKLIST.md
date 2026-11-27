@@ -3,12 +3,13 @@
 Updated as items close. Longer-term plan: `SIMPLIFY.md`; Fusion saves wanted: `FUSION-TEST-CASES.md`;
 PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 
-## cadmpeg PRs (branches in `~/cadmpeg`, rebased on upstream `main`, not pushed)
-- [x] PR 12 `f3d/two-sided-extrude-same-side`: opposite-sign two-sided Extrudes. Settled by T1 (all four sign pairs) and 9 solid Extrudes in 4 files with no exception. Drafted and thin forms stay native (DR-1080).
-- [x] PR 13 `f3d/assemble-tail-link-run`: Assemble scopes with associated tail references. Every joint in every benchmark now decodes; decode diff changes only the 5 joint designs. Joint motion of v6 joint records is still open (DR-1081, T8).
+## cadmpeg PRs (opened 28 Nov)
+- [x] PR 12 = #2440 `f3d/two-sided-extrude-same-side`: opposite-sign two-sided Extrudes. Settled by T1 (all four sign pairs) and 9 solid Extrudes in 4 files with no exception. Drafted and thin forms stay native (DR-1080).
+- [x] PR 13 = #2441 `f3d/assemble-tail-link-run`: Assemble scopes with associated tail references. Every joint in every benchmark now decodes; decode diff changes only the 5 joint designs. Joint motion of v6 joint records is still open (DR-1081, T8).
 - [x] PR 11 (#2260, open) follow-up: the reviewer's blocking point (validator) and three non-blocking points fixed; rebased (it conflicted).
 - [x] Clippy (clean), full tests (6585–6588 pass) and preflight (no FAIL) on all three after the rebase
-- [ ] Your sign-off on PR 12 and PR 13, and your go-ahead to push all three (2260 needs a force-push after the rebase)
+- [x] Signed off; #2440 and #2441 opened, #2260 force-pushed and the reply posted
+- [ ] Watch CI and review on #2440, #2441, #2260
 
 ## Converter (f2sc)
 - [x] Surface Patch outputs, decoded drafts, face-extrude extent, joined regions (committed fe53ab3)
@@ -29,7 +30,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 
 ## Housekeeping
 - [x] SolidCraft 0.50.0 installed; `~/cadmpeg-wt` build cache cleared
-- [ ] Two stale stashes in `~/cadmpeg` duplicate committed work; can be dropped on your OK
+- [x] Two stale stashes in `~/cadmpeg` dropped
 
 ## Provenance for PR texts
 - Your own saves (fdi_mount, f2sc_screws, earlier test files): created and owned by you, the existing statement.

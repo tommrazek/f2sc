@@ -519,7 +519,7 @@ files with AI assistance (Claude Opus 5.5 and Claude Fable 5.2).
 
 ---
 
-# Drafts of 28 Nov (not opened; waiting for your sign-off)
+# Opened 28 Nov: PR 12 = #2440, PR 13 = #2441; #2260 follow-up pushed and answered
 
 Branches in `~/cadmpeg`, each rebased on upstream `main` (28 Nov). Clippy, the codec's
 full test suite and `scripts/preflight.py` were run on each; results below each text.
@@ -555,7 +555,7 @@ integration test over the corpus file.
 
 ### Checklist
 
-- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+- [X] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ### Provenance declaration (decoder or format-spec changes only)
 
@@ -601,7 +601,7 @@ serialize unchanged.
 
 ### Checklist
 
-- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+- [X] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ### Provenance declaration (decoder or format-spec changes only)
 
