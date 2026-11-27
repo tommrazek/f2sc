@@ -516,3 +516,112 @@ none of them is or contains NDA-covered material. The format knowledge was deriv
 files with AI assistance (Claude Opus 5.5 and Claude Fable 5.2).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+---
+
+# Drafts of 28 Nov (not opened; waiting for your sign-off)
+
+Branches in `~/cadmpeg`, each rebased on upstream `main` (28 Nov). Clippy, the codec's
+full test suite and `scripts/preflight.py` were run on each; results below each text.
+
+## PR 12: f3d: read a two-sided Extrude whose distances have opposite signs as one side between its ends
+
+Branch `f3d/two-sided-extrude-same-side`
+
+### Summary
+
+Fusion places a two-sided distance Extrude's ends on the profile normal at `AlongDistance` and
+at the negated `AgainstDistance`, and the solid lies between them. When the two distances have
+opposite signs, both ends lie on one side of the profile plane, but the decoder took their
+magnitudes as a slab across the plane: an Extrude of +20 / −5 mm came out spanning −5…20 mm
+instead of 5…20 mm. Such an Extrude now projects as one side from an offset profile plane at the
+nearer end, travelling to the farther one.
+
+The new CC0 save `corpus/f3d/extrude_two_sided_signs.f3d` holds all four sign pairs on one
+sketch (+20/−5, −20/+5, −20/−5, +20/+5 mm, final bodies 5…20, −20…−5, −20…5 and −5…20 mm).
+Nine solid two-sided Extrudes in four designs agree with the rule; none contradicts it.
+
+Two forms stay native, because the saves do not settle them (DR-1080): a drafted Extrude with
+distances of opposite sign (the save's one example reaches the profile plane, −20…0 mm,
+instead of the slab), and a wall-thickness Extrude with distances of opposite sign (two in the
+save follow the slab rule, but one in another design does not).
+
+`f3d.md` §3.1 states the rule; the existing taper test's second side is made positive (it
+tests the side-two taper, not the sign), and the signed-lane table drops the pair that is now
+one-sided. New tests: unit tests for both sign orders and the draft refusal, and an
+integration test over the corpus file.
+
+### Breaking change
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Provenance declaration (decoder or format-spec changes only)
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+
+## PR 13: f3d: read Assemble scopes with associated tail references and a closing self-reference
+
+Branch `f3d/assemble-tail-link-run`
+
+### Summary
+
+After the feature ordinal, an `Assemble` scope's tail stores eight zero bytes, a u32
+associated-reference count `A`, `A` references and three zero bytes, and it closes with either
+two zero bytes or a reference to the scope itself and one zero byte. The decoder read fifteen
+zero bytes and two closing zero bytes, which is the `A = 0` form. A scope with `A = 2` (the
+scope and its second connector's construction) and a closing self-reference was therefore no
+scope at all, and its joint was lost.
+
+Three designs saved in November 2026 have such a scope: a user-made rigid joint that moves an
+inserted plate, the joint of an inserted part, and a revolute joint between two components.
+The generic scope reader now accepts an unlabeled tail that carries associated or closing
+references (`plain_scope_tail` already parsed them for labeled tails), and the Assemble grammar
+and its span checks read them. The references are kept on the alignment as `tail_links`.
+
+With this, every joint in those designs projects (decode diff over the benchmark designs:
+exactly the five designs with joints change, 0 regressions). The motion of the version-6 joint
+records these designs use is not read: the revolute joint projects with the fixed fallback the
+decoder already reports (DR-1081 records where its limits are, −30° and 60° at joint-record
+offset 76, and the saves that would settle the rest).
+
+`f3d.md` §3.1 gives the tail grammar and span formula with `A` and the closing flag. New CC0 save
+`corpus/f3d/joint_revolute_limits.f3d` with an integration test.
+
+Note for review: the native `DesignAssemblyAlignment` record gains an optional `tail_links`
+field (omitted when empty), so preflight's `ir-version` check warns; existing native records
+serialize unchanged.
+
+### Breaking change
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Provenance declaration (decoder or format-spec changes only)
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+
+## PR 11 (#2260, open): follow-up for the review of 25 Nov
+
+Branch `f3d/component-insert-binds-external-occurrence`, rebased on upstream `main` (it
+conflicted in `corpus/manifest.toml`; both sides' entries kept) plus one new commit. Updating the
+PR needs `git push --force-with-lease fork f3d/component-insert-binds-external-occurrence`
+(rebase), with your go-ahead.
+
+Reply comment draft:
+
+> Thanks — all points addressed in 86f44aae17 (branch rebased on main; it conflicted in `corpus/manifest.toml`).
+>
+> - Blocking: the 400/404 arm in `validate/parameter_scopes.rs` now also accepts `construction.carrier_moved()`, and `component_insert_moved.rs` runs native validation and requires no Error finding. Without the validator change that assertion fails with "Fusion Design parameter scope has an invalid paired frame".
+> - The moved branch now requires the structural evidence you describe: the carrier must store the scope's insertion matrix ahead of its own matrix. The unit test covers a 400-byte carrier with and without that leading matrix (bound vs refused) and keeps the 404 refusal.
+> - `f3d.md`'s frame description and generation map name the moved form; DR-491 folds the settled part into **Known** and its Note no longer claims an unresolved occurrence for bound scopes; the manifest uses `"unknown"`.

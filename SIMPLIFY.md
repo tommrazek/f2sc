@@ -101,3 +101,24 @@ constraint probe in `constraints.py`.
   or let the corpus file names fix them.
 - **Order.** A1–A3 (assemblies and visibility) come first because they change what you see
   most. A15 could go earlier if the thread import errors matter more.
+
+## Status (28 Nov), checked on the test files with current upstream cadmpeg
+
+| Row | Status |
+|---|---|
+| A1 inserts and screws | Inserts moved by a joint: PR 11 (#2260), review addressed. Screw-made occurrences are still not decoded (no occurrence carrier for them); the converter's screw rules stay until then. Next topic. |
+| A2 visibility | Same root cause as A1: the hidden-occurrence record (already decoded) names a Screw-made occurrence. No new rule needed once A1 lands. |
+| A3 kept Combine tools | Not needed: `f2sc-test-combine-keep` converts with no inference. |
+| A4 threads | Not needed for decoding: the threads case uses no thread inference. The one skipped thread is a SolidCraft limit (an offset thread). |
+| A5 C-Pattern | Not needed: `f2sc-test-cpattern` converts with no inference. |
+| A6 Revolve | Still needed: the stale region selection stays native (DR-340, `f2sc-test-revolve-stale`). |
+| A7 profiles | Not needed for the shared-sketch case (no inference); fdi_mount Extrude 19's face mapping is a converter issue (ISSUES D5). |
+| A8 primitives | Turned box: done in the converter from cadmpeg's own placement. Cylinder placement: not decoded (identity placement), still a cadmpeg topic. |
+| A9 split | Still needed: the split tool's faces stay native. |
+| A10 face profile | Still needed: the M3 screw's (and M2 screw's) face profile stays native. |
+| A11 tangent-chain fillet | Not needed for the test case (matches). |
+| A12 owners | Not seen on the test files. |
+| A13 Screw without geometry | Goes with A1. |
+| A14 joint angles | Joints now decode (PR 13); the motion of version-6 joint records is open (DR-1081, Fusion saves T8). |
+| A15 step_thin | Still in use. |
+| New | Two-sided Extrudes with opposite signs: PR 12. |

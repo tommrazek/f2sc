@@ -1691,6 +1691,21 @@ class Converter:
         if d.get("definition") == "block":
             dims = list(d.get("dimensions") or [])
             rot = [row[:3] for row in d.get("placement") or []]
+            pl = d.get("placement") or []
+            if len(dims) == 3 and len(pl) == 3 and rot != [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]:
+                # cadmpeg's placement is the box's frame, a corner at its origin: build the box
+                # there and move it by that frame, when the frame puts its centre where Fusion
+                # records the body's.
+                centre = [sum(pl[i][j] * dims[j] / 2 for j in range(3)) + pl[i][3] for i in range(3)]
+                if d.get("op", "new_body") != "new_body" or max(abs(a_ - b_) for a_, b_ in zip(centre, C)) > 1e-6:
+                    raise Gap("box primitive that is turned, whose frame does not centre it on its body")
+                name = self.unique(f["name"])
+                self.emit_body_op(f, "solid.box", {"length": dims[0], "width": dims[1], "height": dims[2],
+                                                   "corner": [0.0, 0.0, 0.0], "name": name}, "new")
+                self.emit("solid.move", {"bodies": [ns.name(new[0])], "matrix": [[float(x) for x in row] for row in pl],
+                                         "name": self.unique(f"{f['name']} placement")})
+                self.feature_names[f["id"]] = name
+                return
             if len(dims) != 3 or rot != [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]:
                 raise Gap("box primitive that is turned")
             if ext and any(abs(a_ - b_) > 1e-6 for a_, b_ in zip(ext, dims)):
