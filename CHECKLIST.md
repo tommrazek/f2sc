@@ -63,3 +63,6 @@ Order today: T9, T10, T11 in Fusion first; then the remaining items.
 ## Provenance for PR texts
 - Your own saves (fdi_mount, f2sc_screws, earlier test files): created and owned by you, the existing statement.
 - Saves Claude built in your Fusion account (`f2sc-test-*`, T1 onward): the same statement, plus that they were created by you with AI assistance.
+
+## Last item (added with the user's permission, 28 Nov)
+- [ ] Report progress on converting the benchmark files: run every benchmark with the current decoder and converter, and compare with the last run (25–28 Nov), including any change in the output of the older files
