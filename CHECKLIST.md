@@ -36,13 +36,13 @@ Order today: T9, T10, T11 in Fusion first; then the remaining items.
 - [x] cadmpeg PR 16 = #2479 `f3d/joint-record-lanes` (opened 28 Nov): v6 joints project from their lanes; clippy clean, 6711 tests pass, new test fails without the change
 - [x] two-sided-more (DR-1080): a centred wall (code 1) and fdi Extrude 8's wall (code 2) reach the profile plane; code 0 follows the slab rule. A draft on side 1 reaches the profile plane (twice, side 1 the longer side both times); on side 2 it follows the slab rule. Field: u32 at scope offset 157 (after a presence byte). Needs T9 to settle.
 - [x] surface-patch (D4): boundary is an `edge_recipe_data` member that the path binder does not take (ISSUES D4)
-- [ ] cadmpeg PR 17 (draft): resolve a Surface Patch boundary's edge-recipe members
+- [ ] cadmpeg PR 17 (draft): resolve a Surface Patch boundary's edge-recipe members. 28 Nov: the edge operand (record 308) decodes, but `surface_patch_recipe_structure` is None, so `surface_patch_edge_operand_slot` never runs; the fix is in the patch recipe-structure parser. Branch `f3d/patch-boundary-edge-recipes` (empty). Use T11 when exported
 
 ## Converter (f2sc)
 - [x] Surface Patch outputs, decoded drafts, face-extrude extent, joined regions (committed fe53ab3)
 - [x] Turned box primitives built from cadmpeg's placement (no inference); primitives case matches
 - [x] Turned-box change committed (3f6b02c)
-- [ ] fdi_mount Extrude 19 (ISSUES D5): diagnosed further; needs face points or a cadmpeg matcher fix (faces span six bodies). Converter works around SolidCraft's one-body `faces` limit (one face extrude per body, joined); note it in README.md
+- [x] fdi_mount Extrude 19 (ISSUES D5), worked around 28 Nov (check ok; README §9 item 10): diagnosed further; needs face points or a cadmpeg matcher fix (faces span six bodies). Converter works around SolidCraft's one-body `faces` limit (one face extrude per body, joined); note it in README.md
 - [x] fdi_mount Extrude 20: new bodies named by recorded centre via `body_names` (ISSUES D6); check now ok
 - [x] A component's feature using another component's sketch: the sketch is drawn again in the using component (ISSUES F5). revolute-limits component 2 Extrude 1 and film_scanner Extrude 3 (+ Moves 3–5) now convert and match; the only two cases in the benchmarks
 

@@ -567,6 +567,15 @@ the `--check`/`--build` CLI). Issues 5 and 6 come from a private design and were
    result stays within 0.1 µm of cadmpeg's curve or surface. In the case found, 1024 segments
    become 512 and the body imports as a closed solid. 0.40.1 cannot import it either way.
 
+10. **A face extrude takes faces of one body only** (`solid.extrude` `faces`/`face_body`, 0.50). Fusion can
+   extrude faces of several bodies at once: fdi_mount's Extrude 19 extrudes a plate face with holes together
+   with the patch sheets that fill five of them. **Workaround in the converter (28 Nov):**
+   `patched_face_profiles` in `f3d2sc.py` maps such an extrude onto the sketch regions the faces cover: the
+   profile enclosing the listed ones (the body face) and each listed profile that an earlier sheet in the
+   faces' plane covers. It applies only when that accounts for every picked face (one body face plus one
+   face per sheet); the note "its faces belong to N bodies" marks each use. Drop it if SolidCraft accepts
+   faces of several bodies, or once cadmpeg gives the faces' own geometry (ISSUES D5).
+
 ---
 
 ## 10. Further documents

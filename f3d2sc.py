@@ -1172,7 +1172,16 @@ class Converter:
             # cadmpeg matched the picked faces to a sketch profile lying `offset` along its normal.
             sref = sp["historical_face_sketch"]
             p["sketch"] = self.sketch_names.get(sref) or fail("sketch not emitted")
-            p["profiles"] = self.profile_picks(sref, [int(x) for x in sp["historical_face_profiles"].split(",")])
+            listed = [int(x) for x in sp["historical_face_profiles"].split(",")]
+            patched = self.patched_face_profiles(f, sref, listed, len(prof["value"]["faces"]),
+                                                 float(sp["historical_face_offset"]))
+            if patched is not None:
+                self.notes.append(f"{f['name']}: its faces belong to {len(prof['value']['faces'])} bodies (a face with "
+                                  "holes and the patch sheets in some of them), which SolidCraft's face extrude cannot "
+                                  "take together; extruded as the sketch regions they cover: the outer profile "
+                                  f"{patched[0]} and the patched profiles {patched[1:]}")
+                listed = patched
+            p["profiles"] = self.profile_picks(sref, listed)
             # The faces lie `historical_face_offset` along that sketch's normal; cadmpeg's own
             # start and extent (drafts, two sides) are measured from the faces' plane.
             d = dict(d)
@@ -1319,6 +1328,47 @@ class Converter:
             if ns is not None and A:
                 p["targets"] = self.names(ns, A)
             self.emit(command, p)
+
+    def patched_face_profiles(self, f, sref, listed, n_faces, offset):
+        """A face extrude whose faces are a body face with holes and the patch sheets that fill
+        some of them. SolidCraft's face extrude takes faces of one body only, so the extrude is
+        mapped onto the sketch regions the faces cover: the profile enclosing every listed one
+        (the body face) and each listed profile that a sheet made earlier, lying in the faces'
+        plane, covers. cadmpeg's `historical_face_profiles` lists the profiles the faces touch,
+        which includes holes no sheet fills. Used only when this accounts for every picked face
+        (one body face and one face per sheet); otherwise None."""
+        s = self.sketch_by_id.get(sref) or {}
+        loops = [self.loop_segments(sref, lp) for lp in s.get("profiles", [])]
+
+        def inside(lp, pt):
+            return bool(lp) and len([c for c in crossings(lp, pt[1]) if c < pt[0]]) % 2 == 1
+
+        if not loops or any(i >= len(loops) or not loops[i] for i in listed):
+            return None
+        boxes = getattr(self, "_final_boxes", None) or final_body_boxes(self.m)
+        self._final_boxes = boxes
+        ids = [b["id"] for b in self.m.get("bodies", [])]
+        earlier = {o for g in self.feats if g.get("ordinal", 0) < f.get("ordinal", 0) for o in g.get("outputs", [])}
+        covered = []
+        for bid, bx in zip(ids, boxes):
+            if bid not in earlier or not bx:
+                continue
+            corners = [self.to_sketch(sref, [bx[i][0], bx[j][1], bx[k][2]]) for i in (0, 1) for j in (0, 1) for k in (0, 1)]
+            ns = [q[2] for q in corners]
+            if max(ns) - min(ns) > 1e-4 or abs(sum(ns) / 8 - offset) > 1e-4:
+                continue  # not a sheet in the faces' plane
+            centre = [sum(q[0] for q in corners) / 8, sum(q[1] for q in corners) / 8]
+            hits = [i for i in listed if inside(loops[i], centre)]
+            if len(hits) != 1:
+                return None
+            covered.append(hits[0])
+        if not covered or len(set(covered)) != len(covered) or 1 + len(covered) != n_faces:
+            return None
+        firsts = [loops[i][0][0] for i in listed]
+        outer = [j for j, lp in enumerate(loops) if j not in listed and lp and all(inside(lp, pt) for pt in firsts)]
+        if len(outer) != 1:
+            return None
+        return [outer[0]] + sorted(covered)
 
     def new_bodies_by_centre(self, f, command, new):
         """The new slots in the order of the solids an extrude makes, paired by least total
