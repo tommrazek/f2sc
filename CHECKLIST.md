@@ -11,7 +11,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] Signed off; #2440 and #2441 opened, #2260 force-pushed and the reply posted
 - [x] #2441 review (28 Nov): two blocking points (v4/v5 span formulas lacked A and C; DR-1081 described saves instead of the stored form, limit offsets 75/83 not 76) and five non-blocking ones; all but the layout-table offsets fixed, rebased, pushed (003aa5624f), reply posted
 - [x] #2260: rebased on main again (conflicted in the manifest); clippy clean, 6665 tests pass, pushed (e76deb7bbd). No new review comments.
-- [ ] Watch review on #2441, #2260, #2467 and #2468
+- [ ] Watch review on #2441, #2260, #2467, #2468 and #2479
 
 ## cadmpeg PRs (opened 28 Nov, morning)
 - [x] PR 14 = #2467 `f3d/occurrence-carrier-property-block` (rebased on main, 6705 tests pass, opened): occurrence carriers whose source placement follows the three gating attributes. Fixes all four carriers of `f2sc-test-visibility-hidden` (three screws placed).
@@ -23,10 +23,12 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] T6+T7 `f2sc-test-two-sided-more` saved (thin A, C, E; drafted B, D)
 - [x] T8 `f2sc-test-joint-motions` saved (28 Nov): ten box components, nine joints (rigid, revolute, slider, cylindrical, pin-slot, planar, ball; revolute −30°/60°/rest 15° and slider −5/20/rest 8 mm). The overnight draft was lost when the Fusion session expired; rebuilt.
 - [x] Saves exported into benchmarks/ (surface-patch, two-sided-more, joint-motions)
+- [ ] T9 `f2sc-test-two-sided-rest` (DR-1080): −5/+20 with a 5° draft on side 1 (side 1 short); +20/−5 with drafts on both sides; thin closed +20/−5 with wall code 2
+- [ ] T10 `f2sc-test-joint-axes` (DR-1081): revolute and slider about/along X, Y and Z; planar with each normal
 
 ## Analysis of the 28 Nov saves
 - [x] joint-motions (DR-1081): a version-6 joint record holds one 51-byte lane per freedom (`01 00 00 00`, self-reference marker, max/min/rest flags at +11, values at +23/+31/+39, u32 code at +47). Codes: 2 rotate Z, 6/7/8 slide X/Y/Z, 3/4/5 the ball's rotations. Holds for every v6 joint in the benchmarks (joint-motions, revolute-limits, insert-joint, screws, visibility). cadmpeg reads all nine as fixed today.
-- [x] cadmpeg PR 16 (local `f3d/joint-record-lanes`, committed): v6 joints project from their lanes; clippy clean, 6711 tests pass, new test fails without the change. Awaits your sign-off
+- [x] cadmpeg PR 16 = #2479 `f3d/joint-record-lanes` (opened 28 Nov): v6 joints project from their lanes; clippy clean, 6711 tests pass, new test fails without the change
 - [x] two-sided-more (DR-1080): a centred wall (code 1) and fdi Extrude 8's wall (code 2) reach the profile plane; code 0 follows the slab rule. A draft on side 1 reaches the profile plane (twice, side 1 the longer side both times); on side 2 it follows the slab rule. Field: u32 at scope offset 157 (after a presence byte). Needs T9 to settle.
 - [x] surface-patch (D4): boundary is an `edge_recipe_data` member that the path binder does not take (ISSUES D4)
 - [ ] cadmpeg PR 17 (draft): resolve a Surface Patch boundary's edge-recipe members

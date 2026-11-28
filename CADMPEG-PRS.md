@@ -699,7 +699,7 @@ I derived this contribution solely by analyzing CAD files I am legally entitled 
 
 The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
 
-## PR 16 (draft, not opened): f3d: read the freedoms of joint records that store them in lanes
+## PR 16 (#2479, opened 28 Nov): f3d: read the freedoms of joint records that store them in lanes
 
 Branch `f3d/joint-record-lanes` (local, off upstream `main`).
 
@@ -734,7 +734,7 @@ motion type and limits; this answers that half.
 
 ### Checklist
 
-- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+- [X] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ### Provenance declaration (decoder or format-spec changes only)
 
