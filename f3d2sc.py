@@ -3220,8 +3220,15 @@ def component_ir(ir, pd):
     m = ir["model"]
     keep = set(pd.get("bodies", []))
     idx = [i for i, b in enumerate(m.get("bodies", [])) if b["id"] in keep]
-    sub = dict(m, features=[f for f in m.get("features", []) if f.get("product_definition") == pd["id"]],
-               bodies=[m["bodies"][i] for i in idx])
+    own = [f for f in m.get("features", []) if f.get("product_definition") == pd["id"]]
+    # A feature can use a sketch of another component (Fusion extrudes it into the active one):
+    # the sketch is drawn again here, before the first feature that uses it.
+    used = set(re.findall(r'"sketch": "([^"]+)"', json.dumps([f.get("definition", {}) for f in own])))
+    foreign = [f for f in m.get("features", []) if f.get("product_definition") != pd["id"]
+               and (f.get("definition", {}).get("definition") == "sketch")
+               and set(re.findall(r'"sketch": "([^"]+)"', json.dumps(f.get("definition", {})))) & used]
+    feats = sorted(own + foreign, key=lambda f: f.get("ordinal", 0))
+    sub = dict(m, features=feats, bodies=[m["bodies"][i] for i in idx])
     return dict(ir, model=sub), idx
 
 

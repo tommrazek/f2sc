@@ -626,7 +626,7 @@ Reply comment draft:
 > - The moved branch now requires the structural evidence you describe: the carrier must store the scope's insertion matrix ahead of its own matrix. The unit test covers a 400-byte carrier with and without that leading matrix (bound vs refused) and keeps the 404 refusal.
 > - `f3d.md`'s frame description and generation map name the moved form; DR-491 folds the settled part into **Known** and its Note no longer claims an unresolved occurrence for bound scopes; the manifest uses `"unknown"`.
 
-## PR 14 (draft, not opened): f3d: read external occurrence carriers whose source placement follows the gating attributes
+## PR 14 (#2467, opened 28 Nov): f3d: read external occurrence carriers whose source placement follows the gating attributes
 
 Branch `f3d/occurrence-carrier-property-block` (local, off upstream `main`).
 
@@ -654,7 +654,7 @@ element twice (path count 2) still fail; two saves do not say what the second el
 
 ### Checklist
 
-- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+- [X] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ### Provenance declaration (decoder or format-spec changes only)
 
@@ -664,7 +664,7 @@ I derived this contribution solely by analyzing CAD files I am legally entitled 
 
 The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
 
-## PR 15 (draft, not opened): f3d: read the prefixed 489-byte Cylinder primitive frame
+## PR 15 (#2468, opened 28 Nov): f3d: read the prefixed 489-byte Cylinder primitive frame
 
 Branch `f3d/cylinder-489-frame` (local, off upstream `main`).
 
@@ -689,7 +689,7 @@ without the change.
 
 ### Checklist
 
-- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+- [X] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ### Provenance declaration (decoder or format-spec changes only)
 

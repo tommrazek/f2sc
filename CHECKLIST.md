@@ -11,11 +11,11 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] Signed off; #2440 and #2441 opened, #2260 force-pushed and the reply posted
 - [x] #2441 review (28 Nov): two blocking points (v4/v5 span formulas lacked A and C; DR-1081 described saves instead of the stored form, limit offsets 75/83 not 76) and five non-blocking ones; all but the layout-table offsets fixed, rebased, pushed (003aa5624f), reply posted
 - [x] #2260: rebased on main again (conflicted in the manifest); clippy clean, 6665 tests pass, pushed (e76deb7bbd). No new review comments.
-- [ ] Watch review on #2441 and #2260
+- [ ] Watch review on #2441, #2260, #2467 and #2468
 
-## New cadmpeg branches (local, not pushed; PR texts in CADMPEG-PRS.md for your sign-off)
-- [x] PR 14 `f3d/occurrence-carrier-property-block`: occurrence carriers whose source placement follows the three gating attributes. Fixes all four carriers of `f2sc-test-visibility-hidden` (three screws placed). Question for you: the corpus .f3z embeds Fusion's library screw (as #2260's does).
-- [x] PR 15 `f3d/cylinder-489-frame`: the prefixed 489-byte Cylinder primitive. The primitives save's cylinder was silently at the origin; now at (-40, -10, 0) mm, a new body.
+## cadmpeg PRs (opened 28 Nov, morning)
+- [x] PR 14 = #2467 `f3d/occurrence-carrier-property-block` (rebased on main, 6705 tests pass, opened): occurrence carriers whose source placement follows the three gating attributes. Fixes all four carriers of `f2sc-test-visibility-hidden` (three screws placed).
+- [x] PR 15 = #2468 `f3d/cylinder-489-frame` (rebased; test updated for upstream #2449's feature names "CylinderPrimitive1"; 6705 tests pass, opened): the prefixed 489-byte Cylinder primitive. The primitives save's cylinder was silently at the origin; now at (-40, -10, 0) mm, a new body.
 - [ ] Still open in visibility: carriers with a doubled path element (the two hidden screws of the two-hidden save), and occurrence visibility itself
 
 ## Fusion saves (FUSION-TEST-CASES.md)
@@ -30,7 +30,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] Turned-box change committed (3f6b02c)
 - [ ] fdi_mount Extrude 19 (ISSUES D5): diagnosed further; needs face points or a cadmpeg matcher fix (faces span six bodies)
 - [x] fdi_mount Extrude 20: new bodies named by recorded centre via `body_names` (ISSUES D6); check now ok
-- [ ] A component's feature using another component's sketch (revolute-limits component 2; today imported, shape matches)
+- [x] A component's feature using another component's sketch: the sketch is drawn again in the using component (ISSUES F5). revolute-limits component 2 Extrude 1 and film_scanner Extrude 3 (+ Moves 3–5) now convert and match; the only two cases in the benchmarks
 
 ## Test files checked (diagnosis done; each needs a cadmpeg change or a Fusion save)
 - [x] revolute-limits: joint fixed by PR 13; motion type and limits of v6 joints open (DR-1081, T8)
@@ -43,7 +43,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 
 ## Housekeeping
 - [x] SolidCraft 0.50.0 installed; `~/cadmpeg-wt` build cache cleared
-- [x] Two stale stashes in `~/cadmpeg` dropped
+- [x] Two stale stashes in `~/cadmpeg` dropped; the #2441 stash dropped (28 Nov)
 
 ## Provenance for PR texts
 - Your own saves (fdi_mount, f2sc_screws, earlier test files): created and owned by you, the existing statement.
