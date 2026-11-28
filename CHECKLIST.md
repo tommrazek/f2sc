@@ -27,9 +27,9 @@ Order today: T9, T10, T11 in Fusion first; then the remaining items.
 - [x] T6+T7 `f2sc-test-two-sided-more` saved (thin A, C, E; drafted B, D)
 - [x] T8 `f2sc-test-joint-motions` saved (28 Nov): ten box components, nine joints (rigid, revolute, slider, cylindrical, pin-slot, planar, ball; revolute −30°/60°/rest 15° and slider −5/20/rest 8 mm). The overnight draft was lost when the Fusion session expired; rebuilt.
 - [x] Saves exported into benchmarks/ (surface-patch, two-sided-more, joint-motions)
-- [ ] T9 `f2sc-test-two-sided-rest` (DR-1080): −5/+20 with a 5° draft on side 1 (side 1 short); +20/−5 with drafts on both sides; thin closed +20/−5 with wall code 2
-- [ ] T10 `f2sc-test-joint-axes` (DR-1081): revolute and slider about/along X, Y and Z; planar with each normal
-- [ ] T11 `f2sc-test-patch-loops` (PR 17): a plate with a rectangular and a round hole; Patch 1 over the rectangular hole's top loop (4 edges), Patch 2 over both holes' top loops in one feature
+- [x] T9 `f2sc-test-two-sided-rest` saved 28 Nov, awaiting export (DR-1080): −5/+20 with a 5° draft on side 1 (side 1 short); +20/−5 with drafts on both sides; thin closed +20/−5 with wall code 2
+- [x] T10 `f2sc-test-joint-axes` saved 28 Nov, awaiting export (DR-1081): revolute X, revolute Y, slider X, slider Y, planar normal X, planar normal Y (Z cases are in T8)
+- [x] T11 `f2sc-test-patch-loops` saved 28 Nov, awaiting export (PR 17): a plate with a rectangular and a round hole; Patch 1 over the rectangular hole's top loop (4 edges), Patch 2 over both holes' top loops in one feature
 
 ## Analysis of the 28 Nov saves
 - [x] joint-motions (DR-1081): a version-6 joint record holds one 51-byte lane per freedom (`01 00 00 00`, self-reference marker, max/min/rest flags at +11, values at +23/+31/+39, u32 code at +47). Codes: 2 rotate Z, 6/7/8 slide X/Y/Z, 3/4/5 the ball's rotations. Holds for every v6 joint in the benchmarks (joint-motions, revolute-limits, insert-joint, screws, visibility). cadmpeg reads all nine as fixed today.
