@@ -625,3 +625,76 @@ Reply comment draft:
 > - Blocking: the 400/404 arm in `validate/parameter_scopes.rs` now also accepts `construction.carrier_moved()`, and `component_insert_moved.rs` runs native validation and requires no Error finding. Without the validator change that assertion fails with "Fusion Design parameter scope has an invalid paired frame".
 > - The moved branch now requires the structural evidence you describe: the carrier must store the scope's insertion matrix ahead of its own matrix. The unit test covers a 400-byte carrier with and without that leading matrix (bound vs refused) and keeps the 404 refusal.
 > - `f3d.md`'s frame description and generation map name the moved form; DR-491 folds the settled part into **Known** and its Note no longer claims an unresolved occurrence for bound scopes; the manifest uses `"unknown"`.
+
+## PR 14 (draft, not opened): f3d: read external occurrence carriers whose source placement follows the gating attributes
+
+Branch `f3d/occurrence-carrier-property-block` (local, off upstream `main`).
+
+### Summary
+
+An attributed legacy occurrence carrier can store a source-placement flag (and matrix) after its
+ordinal. The decoder admitted that generation only after the empty attribute block. Fusion also
+writes it after the three gating attributes (`GatedByParent`, `ResolutionTime`, `SelfGated`), so
+every external occurrence carrier of such a save failed ("typed placement carrier ... did not
+close under its generation grammar"): the three screws of the test assembly collapsed into one
+occurrence at the identity. The generation now follows either attribute block; the record is
+132 bytes longer with the three-property block (809 = 677 + 132 for two matrices).
+
+Test: `corpus/f3d/occurrence_carriers_gating_attributes.f3z` (CC0), integration test
+`fusion_gated_occurrence_carriers.rs`: the three screws are at (10, 10, 10), (30, 30, 10) and
+(50, 10, 10) mm and no carrier is reported undecoded. The test fails without the change.
+
+**For you to decide before opening:** like #2260's corpus file, this `.f3z` embeds the screw design that Fusion's
+fastener library inserted (DIN 912 M3 x 12). The provenance statement says the files are yours alone.
+
+Not in this PR: in another save, carriers whose occurrence path stores the same root-component
+element twice (path count 2) still fail; two saves do not say what the second element means.
+
+### Breaking change
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Provenance declaration (decoder or format-spec changes only)
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+
+## PR 15 (draft, not opened): f3d: read the prefixed 489-byte Cylinder primitive frame
+
+Branch `f3d/cylinder-489-frame` (local, off upstream `main`).
+
+### Summary
+
+A `CylinderPrimitive` scope of 489 bytes with five ordered references matched none of the
+extended forms, so the decoder fell back to the support construction alone: the cylinder was
+placed at the support frame (the identity, for a cylinder on the XY plane) with no loss, and its
+result operation was read from the wrong offset (`join` instead of `new_body`). This form is the
+prefixed header (operation at 26, matrix at 76) with the counted construction reference at 208,
+after four zero bytes, and eight zero bytes before the GUID at 231; the ordered reference count is
+at 310. The support of such a cylinder is a version-16 placement construction, which the
+support-only path already admitted; the construction path now admits it too, and composes the
+scope-local matrix after it as for the other forms (DR-813).
+
+Test: `corpus/f3d/cylinder_primitive_prefixed_489.f3d` (CC0), integration test
+`fusion_cylinder_489.rs`: the cylinder is a new body with its base centre at (-40, -10, 0) mm,
+which with its 18 mm height gives the body centre Fusion records, (-40, -10, 9). The test fails
+without the change.
+
+### Breaking change
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Provenance declaration (decoder or format-spec changes only)
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).

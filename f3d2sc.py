@@ -1303,8 +1303,15 @@ class Converter:
             if ns is None or not new:
                 raise Gap(f"new-body {command.split('.')[-1]} whose bodies are not in the ledger")
             p["body_name"] = ns.name(new[0])
-            self.emit(command, p)
             made = [ns.name(new[0])] + [f"{ns.name(new[0])} ({k})" for k in range(2, len(new) + 1)]
+            order = self.new_bodies_by_centre(f, command, new)
+            if order:
+                # SolidCraft makes the solids in pick order, Fusion numbers them its own way:
+                # name each solid after the Fusion body whose recorded centre it has.
+                p.pop("body_name")
+                p["body_names"] = made = [ns.name(s_) for s_ in order]
+                new = order
+            self.emit(command, p)
             for s_, nm in zip(new, made):
                 self.bodies.add(nm)
                 self.adopt(ns, s_, nm)
@@ -1312,6 +1319,22 @@ class Converter:
             if ns is not None and A:
                 p["targets"] = self.names(ns, A)
             self.emit(command, p)
+
+    def new_bodies_by_centre(self, f, command, new):
+        """The new slots in the order of the solids an extrude makes, paired by least total
+        distance between each solid's predicted box centre and the slot's recorded centre;
+        None when the boxes or the centres are not all known."""
+        if command != "solid.extrude" or len(new) < 2 or len(new) > 7:
+            return None
+        params = self.extrude_params.get(f["id"])
+        C = f.get("_C") or {}
+        if not params or params[1] or len(params[2]) != len(new) or not all(s_ in C for s_ in new):
+            return None
+        from itertools import permutations
+        centres = [[(a + b) / 2 for a, b in zip(lo, hi)] for lo, hi in params[2]]
+        cost = lambda perm: sum(math.dist(c, C[s_]) for c, s_ in zip(centres, perm))
+        order = list(min(permutations(new), key=cost))
+        return order if order != list(new) else None
 
     # ---------- revolve ----------
     def sketch_frame(self, sref):
