@@ -3,6 +3,10 @@
 Updated as items close. Longer-term plan: `SIMPLIFY.md`; Fusion saves wanted: `FUSION-TEST-CASES.md`;
 PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 
+**Final version for 28 Nov.** No new items may be added today without the user's explicit permission; only tick or annotate the items below.
+
+Order today: T9, T10, T11 in Fusion first; then the remaining items.
+
 ## cadmpeg PRs (opened 28 Nov)
 - [x] PR 12 = #2440 `f3d/two-sided-extrude-same-side`: **merged**. Opposite-sign two-sided Extrudes. Settled by T1 (all four sign pairs) and 9 solid Extrudes in 4 files with no exception. Drafted and thin forms stay native (DR-1080).
 - [x] PR 13 = #2441 `f3d/assemble-tail-link-run`: Assemble scopes with associated tail references. Every joint in every benchmark now decodes; decode diff changes only the 5 joint designs. Joint motion of v6 joint records is still open (DR-1081, T8).
@@ -25,6 +29,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] Saves exported into benchmarks/ (surface-patch, two-sided-more, joint-motions)
 - [ ] T9 `f2sc-test-two-sided-rest` (DR-1080): −5/+20 with a 5° draft on side 1 (side 1 short); +20/−5 with drafts on both sides; thin closed +20/−5 with wall code 2
 - [ ] T10 `f2sc-test-joint-axes` (DR-1081): revolute and slider about/along X, Y and Z; planar with each normal
+- [ ] T11 `f2sc-test-patch-loops` (PR 17): a plate with a rectangular and a round hole; Patch 1 over the rectangular hole's top loop (4 edges), Patch 2 over both holes' top loops in one feature
 
 ## Analysis of the 28 Nov saves
 - [x] joint-motions (DR-1081): a version-6 joint record holds one 51-byte lane per freedom (`01 00 00 00`, self-reference marker, max/min/rest flags at +11, values at +23/+31/+39, u32 code at +47). Codes: 2 rotate Z, 6/7/8 slide X/Y/Z, 3/4/5 the ball's rotations. Holds for every v6 joint in the benchmarks (joint-motions, revolute-limits, insert-joint, screws, visibility). cadmpeg reads all nine as fixed today.
@@ -37,7 +42,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] Surface Patch outputs, decoded drafts, face-extrude extent, joined regions (committed fe53ab3)
 - [x] Turned box primitives built from cadmpeg's placement (no inference); primitives case matches
 - [x] Turned-box change committed (3f6b02c)
-- [ ] fdi_mount Extrude 19 (ISSUES D5): diagnosed further; needs face points or a cadmpeg matcher fix (faces span six bodies)
+- [ ] fdi_mount Extrude 19 (ISSUES D5): diagnosed further; needs face points or a cadmpeg matcher fix (faces span six bodies). Converter works around SolidCraft's one-body `faces` limit (one face extrude per body, joined); note it in README.md
 - [x] fdi_mount Extrude 20: new bodies named by recorded centre via `body_names` (ISSUES D6); check now ok
 - [x] A component's feature using another component's sketch: the sketch is drawn again in the using component (ISSUES F5). revolute-limits component 2 Extrude 1 and film_scanner Extrude 3 (+ Moves 3–5) now convert and match; the only two cases in the benchmarks
 
