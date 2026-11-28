@@ -698,3 +698,48 @@ I derived the format knowledge in this contribution only from sources allowed by
 I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
 
 The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+
+## PR 16 (draft, not opened): f3d: read the freedoms of joint records that store them in lanes
+
+Branch `f3d/joint-record-lanes` (local, off upstream `main`).
+
+### Summary
+
+Current Fusion saves store no motion record with freedom entries. Each joint record then states its
+freedoms itself, one 51-byte lane per degree of freedom: u32 `1`, the marked self-reference, the two
+limit flags and the rest flag at +11, the maximum, minimum and rest values at +23, and the u32
+freedom code at +47. The codes are those of motion records (`2` rotation about the local z axis, `8`
+translation along it), plus `6` and `7` for translation along x and y and `3`, `4`, `5` for the three
+rotations of a ball. The decoder read none of this, so every such joint projected as fixed.
+
+The decoder now reads the lanes of an `Assemble` scope's joint record when no motion record covers it,
+and projects one lane of code `2` as revolute, `8` as slider, `2, 8` as cylindrical, and `3, 4, 5` as
+ball. Limits are read for single-lane joints, as before. Pin-slot (`2, 6`) and planar (`2, 6, 7`) have
+no paired joint kind, so they stay fixed and are reported. A limit on a later lane of a
+multi-lane joint is not read: no save shows one, so such a joint also stays fixed and is reported.
+
+Every joint record in the test saves fits this layout: the nine joints of the new corpus file, the
+rigid joints of the visibility and screw saves (no lane), and the revolute with limits of #2441's save
+(one code-`2` lane, limits 60°/−30°).
+
+Test: `corpus/f3d/joint_record_freedom_lanes.f3d` (CC0), integration test
+`fusion_joint_record_lanes.rs`: rigid, revolute, slider, cylindrical, pin-slot, planar, ball, and a
+revolute and a slider with limits, in timeline order. It asserts the projected kinds and the two
+sets of limits.
+
+Related: once #2441 lands, its open item DR-1081 asks where a version-6 joint record stores its
+motion type and limits; this answers that half.
+
+### Breaking change
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Provenance declaration (decoder or format-spec changes only)
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).

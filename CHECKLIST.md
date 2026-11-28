@@ -26,7 +26,7 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 
 ## Analysis of the 28 Nov saves
 - [x] joint-motions (DR-1081): a version-6 joint record holds one 51-byte lane per freedom (`01 00 00 00`, self-reference marker, max/min/rest flags at +11, values at +23/+31/+39, u32 code at +47). Codes: 2 rotate Z, 6/7/8 slide X/Y/Z, 3/4/5 the ball's rotations. Holds for every v6 joint in the benchmarks (joint-motions, revolute-limits, insert-joint, screws, visibility). cadmpeg reads all nine as fixed today.
-- [ ] cadmpeg PR 16 (draft): project v6 joints from their lanes (rigid, revolute, slider, cylindrical, pin-slot, planar, ball, with limits)
+- [x] cadmpeg PR 16 (local `f3d/joint-record-lanes`, committed): v6 joints project from their lanes; clippy clean, 6711 tests pass, new test fails without the change. Awaits your sign-off
 - [x] two-sided-more (DR-1080): a centred wall (code 1) and fdi Extrude 8's wall (code 2) reach the profile plane; code 0 follows the slab rule. A draft on side 1 reaches the profile plane (twice, side 1 the longer side both times); on side 2 it follows the slab rule. Field: u32 at scope offset 157 (after a presence byte). Needs T9 to settle.
 - [x] surface-patch (D4): boundary is an `edge_recipe_data` member that the path binder does not take (ISSUES D4)
 - [ ] cadmpeg PR 17 (draft): resolve a Surface Patch boundary's edge-recipe members
