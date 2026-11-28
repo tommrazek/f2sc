@@ -29,6 +29,7 @@ Order today: T9, T10, T11 in Fusion first; then the remaining items.
 - [x] Saves exported into benchmarks/ (surface-patch, two-sided-more, joint-motions)
 - [x] T9 `f2sc-test-two-sided-rest` exported and decoded 28 Nov (DR-1080): drafts settled (see ISSUES D3 note); thin wall code 2 kept the slab, so the wall field at 157 is not settled. Spec was: −5/+20 with a 5° draft on side 1 (side 1 short); +20/−5 with drafts on both sides; thin closed +20/−5 with wall code 2
 - [x] T10 `f2sc-test-joint-axes` exported and decoded 28 Nov: codes 0/1/2 rotate about x/y/z, 6/7/8 slide; committed on PR 16's branch (177e9cfd29, not pushed). Spec was: revolute X, revolute Y, slider X, slider Y, planar normal X, planar normal Y (Z cases are in T8)
+- [ ] T12 `f2sc-test-visibility-toggles` (added with the user's permission, 28 Nov; ISSUES D11): four inserts of `f2sc-test-insert-part`; A untouched, B hidden once, C hidden then shown, D hidden, shown, hidden; one session, one save. Which carriers store the doubled path element tells whether toggling, the final hidden state, or a repeated toggle causes it
 - [x] T11 `f2sc-test-patch-loops` exported 28 Nov (PR 17): a plate with a rectangular and a round hole; Patch 1 over the rectangular hole's top loop (4 edges), Patch 2 over both holes' top loops in one feature
 
 ## Analysis of the 28 Nov saves
