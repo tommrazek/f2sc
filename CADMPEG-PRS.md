@@ -730,6 +730,13 @@ sets of limits.
 Related: once #2441 lands, its open item DR-1081 asks where a version-6 joint record stores its
 motion type and limits; this answers that half.
 
+
+### Update after review (28 Nov, not pushed yet)
+
+- Review fixes: a motion record keeps to its confirmed codes (1, 2, 8), so codes 0, 6, 7 and the ball's 3, 4, 5 project only from lanes (the empty lane list made the ball arm accept a motion record); the lane is u32 `1` plus 51 bytes, with zero padding between lanes; a `joint_record_freedom_lane` layout record.
+- Extension: lane codes 0/1/2 and 6/7/8 are rotations about and translations along x/y/z (second corpus file `joint_record_lane_axes.f3d`, from T10): revolute and slider joints about and along x and y project with their frames turned; pin-slot and planar on any axis are reported by name.
+- Rebased on main after #2441 merged: DR-1081 keeps only its tail question, and #2441's joint-tail test now asserts the revolute with its limits.
+
 ### Breaking change
 
 ### Checklist
@@ -742,4 +749,4 @@ I derived the format knowledge in this contribution only from sources allowed by
 
 I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
 
-The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus files this PR adds were created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
