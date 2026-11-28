@@ -21,8 +21,8 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 ## Fusion saves (FUSION-TEST-CASES.md)
 - [x] T4+T5 `f2sc-test-surface-patch` saved
 - [x] T6+T7 `f2sc-test-two-sided-more` saved (thin A, C, E; drafted B, D)
-- [ ] T8 `f2sc-test-joint-motions`: hybrid design open, sketch started, not saved. Paused while you are away.
-- [ ] Export the saves into benchmarks/ (you)
+- [x] T8 `f2sc-test-joint-motions` saved (28 Nov): ten box components, nine joints (rigid, revolute, slider, cylindrical, pin-slot, planar, ball; revolute −30°/60°/rest 15° and slider −5/20/rest 8 mm). The overnight draft was lost when the Fusion session expired; rebuilt.
+- [ ] Export the saves into benchmarks/ (you): surface-patch, two-sided-more, joint-motions
 
 ## Converter (f2sc)
 - [x] Surface Patch outputs, decoded drafts, face-extrude extent, joined regions (committed fe53ab3)
