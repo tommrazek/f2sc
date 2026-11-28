@@ -22,7 +22,14 @@ PR texts: `CADMPEG-PRS.md` (Drafts of 28 Nov).
 - [x] T4+T5 `f2sc-test-surface-patch` saved
 - [x] T6+T7 `f2sc-test-two-sided-more` saved (thin A, C, E; drafted B, D)
 - [x] T8 `f2sc-test-joint-motions` saved (28 Nov): ten box components, nine joints (rigid, revolute, slider, cylindrical, pin-slot, planar, ball; revolute −30°/60°/rest 15° and slider −5/20/rest 8 mm). The overnight draft was lost when the Fusion session expired; rebuilt.
-- [ ] Export the saves into benchmarks/ (you): surface-patch, two-sided-more, joint-motions
+- [x] Saves exported into benchmarks/ (surface-patch, two-sided-more, joint-motions)
+
+## Analysis of the 28 Nov saves
+- [x] joint-motions (DR-1081): a version-6 joint record holds one 51-byte lane per freedom (`01 00 00 00`, self-reference marker, max/min/rest flags at +11, values at +23/+31/+39, u32 code at +47). Codes: 2 rotate Z, 6/7/8 slide X/Y/Z, 3/4/5 the ball's rotations. Holds for every v6 joint in the benchmarks (joint-motions, revolute-limits, insert-joint, screws, visibility). cadmpeg reads all nine as fixed today.
+- [ ] cadmpeg PR 16 (draft): project v6 joints from their lanes (rigid, revolute, slider, cylindrical, pin-slot, planar, ball, with limits)
+- [x] two-sided-more (DR-1080): a centred wall (code 1) and fdi Extrude 8's wall (code 2) reach the profile plane; code 0 follows the slab rule. A draft on side 1 reaches the profile plane (twice, side 1 the longer side both times); on side 2 it follows the slab rule. Field: u32 at scope offset 157 (after a presence byte). Needs T9 to settle.
+- [x] surface-patch (D4): boundary is an `edge_recipe_data` member that the path binder does not take (ISSUES D4)
+- [ ] cadmpeg PR 17 (draft): resolve a Surface Patch boundary's edge-recipe members
 
 ## Converter (f2sc)
 - [x] Surface Patch outputs, decoded drafts, face-extrude extent, joined regions (committed fe53ab3)
