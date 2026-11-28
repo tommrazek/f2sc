@@ -15,7 +15,7 @@ Order today: T9, T10, T11 in Fusion first; then the remaining items.
 - [x] Signed off; #2440 and #2441 opened, #2260 force-pushed and the reply posted
 - [x] #2441 review (28 Nov): two blocking points (v4/v5 span formulas lacked A and C; DR-1081 described saves instead of the stored form, limit offsets 75/83 not 76) and five non-blocking ones; all but the layout-table offsets fixed, rebased, pushed (003aa5624f), reply posted
 - [x] #2260: rebased on main again (conflicted in the manifest); clippy clean, 6665 tests pass, pushed (e76deb7bbd). No new review comments.
-- [ ] Watch review on #2441, #2260, #2467, #2468 and #2479. 28 Nov: #2441 merged; #2467 anchors fixed and pushed (f5636e19e6); #2479 review fixes, axis extension and rebase committed locally (66de39f658), awaiting your OK to push
+- [ ] Watch review on #2441, #2260, #2467, #2468 and #2479. 28 Nov: #2441 merged; #2467 anchors fixed and pushed (f5636e19e6); #2479 review fixes and rebase pushed (c1db6a491f), reply posted; the axis extension is PR 18 (local branch `f3d/joint-record-lane-axes`, 7e520733b9), to open after #2479 merges
 
 ## cadmpeg PRs (opened 28 Nov, morning)
 - [x] PR 14 = #2467 `f3d/occurrence-carrier-property-block` (rebased on main, 6705 tests pass, opened): occurrence carriers whose source placement follows the three gating attributes. Fixes all four carriers of `f2sc-test-visibility-hidden` (three screws placed).

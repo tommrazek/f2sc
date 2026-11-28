@@ -731,11 +731,11 @@ Related: once #2441 lands, its open item DR-1081 asks where a version-6 joint re
 motion type and limits; this answers that half.
 
 
-### Update after review (28 Nov, not pushed yet)
+### Update after review (28 Nov, pushed c1db6a491f)
 
-- Review fixes: a motion record keeps to its confirmed codes (1, 2, 8), so codes 0, 6, 7 and the ball's 3, 4, 5 project only from lanes (the empty lane list made the ball arm accept a motion record); the lane is u32 `1` plus 51 bytes, with zero padding between lanes; a `joint_record_freedom_lane` layout record.
-- Extension: lane codes 0/1/2 and 6/7/8 are rotations about and translations along x/y/z (second corpus file `joint_record_lane_axes.f3d`, from T10): revolute and slider joints about and along x and y project with their frames turned; pin-slot and planar on any axis are reported by name.
-- Rebased on main after #2441 merged: DR-1081 keeps only its tail question, and #2441's joint-tail test now asserts the revolute with its limits.
+- Ball arm requires joint-record lanes; lane size corrected (u32 `1` plus 51 bytes, zero padding between lanes); `joint_record_freedom_lane` layout record.
+- Rebased on main after #2441: DR-1081 keeps only its tail question; #2441's joint-tail test asserts the revolute with limits.
+- The axis extension moved to PR 18 (option 2, 28 Nov).
 
 ### Breaking change
 
@@ -749,4 +749,30 @@ I derived the format knowledge in this contribution only from sources allowed by
 
 I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
 
-The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus files this PR adds were created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
+
+## PR 18 (draft, not opened; after #2479 merges): f3d: project joint-record lanes about and along every local axis
+
+Branch `f3d/joint-record-lane-axes` (local, on top of #2479's branch; rebase onto main once #2479 merges).
+
+### Summary
+
+#2479 reads a version-6 joint record's freedom lanes but projects only rotation about and translation along the joint's local z axis (and a y rotation, as motion records already do). A controlled save with joints about and along x and y shows the full code table: lane codes `0`, `1` and `2` rotate about the local x, y and z axes, and `6`, `7` and `8` translate along them. A planar joint stores its normal's rotation and the two other translations (`0, 7, 8` for an x normal, `1, 6, 8` for a y normal).
+
+The decoder now projects one rotation or translation lane on any axis as a revolute or slider, turning the connector frames so that the axis is z, and a rotation with the translation along the same axis as cylindrical. A slider or cylindrical off the z axis with a translation offset stays fixed and is reported. A motion record keeps to its confirmed codes `1`, `2` and `8`. Pin-slot and planar joints on any axis are reported by name.
+
+Test: `corpus/f3d/joint_record_lane_axes.f3d` (CC0), integration test `fusion_joint_record_lanes.rs`: revolute about x and y, slider along x and y, then two planar joints, in timeline order. The unit test that treated code `0` as unconfirmed now uses an unknown code.
+
+### Breaking change
+
+### Checklist
+
+- [ ] Signed off: I certify this PR under the [Developer Certificate of Origin](https://developercertificate.org/). See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Provenance declaration (decoder or format-spec changes only)
+
+I derived the format knowledge in this contribution only from sources allowed by LEGAL.md.
+
+I derived this contribution solely by analyzing CAD files I am legally entitled to possess and from publicly available information. I did not use vendor SDKs, decompiled binaries, confidential or NDA-covered material, or any source listed as forbidden in LEGAL.md.
+
+The CAD files analyzed for this contribution were created by me and are owned exclusively by me; none of them is or contains NDA-covered material. The corpus file this PR adds was created by me with AI assistance. The format knowledge was derived from these files with AI assistance (Claude Opus 5.5).
